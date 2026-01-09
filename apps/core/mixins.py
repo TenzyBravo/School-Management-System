@@ -11,13 +11,21 @@ class TenantViewSetMixin:
         
         # At this point, request.user is populated by JWTAuthentication
         user = getattr(request, 'user', None)
-        print(f"DEBUG: Mixin initial user={user}")
         if user and user.is_authenticated:
             school = getattr(user, 'school', None)
-            print(f"DEBUG: Mixin setting context school={school}")
             set_current_context(user, school)
         else:
             set_current_context(None, None)
+
+    def get_queryset(self):
+        """
+        Force re-evaluation of the queryset to ensure TenantManager 
+        runs with the current thread-local context.
+        """
+        # We assume self.queryset is set on the view
+        if self.queryset is not None:
+            return self.queryset.model.objects.all()
+        return super().get_queryset()
 
     def finalize_response(self, request, response, *args, **kwargs):
         clear_context()
