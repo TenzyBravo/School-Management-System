@@ -23,6 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('apps.users.urls')),
     path('api/v1/', include('apps.academics.urls')),
+    path('api/v1/', include('apps.schools.urls')),
     
     # Swagger UI
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
