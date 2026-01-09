@@ -10,6 +10,7 @@ class TenantManager(models.Manager):
         qs = super().get_queryset()
         school = get_current_school()
         user = get_current_user()
+        print(f"DEBUG: Manager user={user}, school={school}")
         
         # HW users (if implemented) or Superusers can see all
         # For mixed context where user might be None but school set, use school.
