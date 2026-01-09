@@ -1,9 +1,23 @@
 import { getAccess, getRefresh, setAccess, clearTokens } from './auth'
 
-async function refreshToken(): Promise<boolean> {
+let refreshPromise: Promise<boolean> | null = null
+let refreshTimeout: number | null = null
+
+function parseJwt(token: string | null) {
+  if (!token) return null
+  try {
+    const parts = token.split('.')
+    if (parts.length < 2) return null
+    const payload = JSON.parse(decodeURIComponent(escape(window.atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))))
+    return payload
+  } catch (e) {
+    return null
+  }
+}
+
+async function doRefresh(): Promise<boolean> {
   const refresh = getRefresh()
   if (!refresh) return false
-
   try {
     const res = await fetch('/api/v1/auth/refresh/', {
       method: 'POST',
@@ -14,6 +28,8 @@ async function refreshToken(): Promise<boolean> {
     const data = await res.json()
     if (data.access) {
       setAccess(data.access)
+      // schedule next refresh based on new token
+      scheduleRefreshFromAccess()
       return true
     }
     return false
@@ -21,6 +37,48 @@ async function refreshToken(): Promise<boolean> {
     return false
   }
 }
+
+async function refreshToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise
+  refreshPromise = doRefresh()
+  try {
+    const ok = await refreshPromise
+    return ok
+  } finally {
+    refreshPromise = null
+  }
+}
+
+function clearScheduledRefresh() {
+  if (refreshTimeout) {
+    clearTimeout(refreshTimeout)
+    refreshTimeout = null
+  }
+}
+
+export function scheduleRefreshFromAccess() {
+  clearScheduledRefresh()
+  const access = getAccess()
+  const payload = parseJwt(access)
+  if (!payload || !payload.exp) return
+  const expiryMs = payload.exp * 1000
+  // refresh 60 seconds before expiry
+  const refreshAt = expiryMs - 60_000
+  const delay = refreshAt - Date.now()
+  if (delay <= 0) {
+    // token already near expiry - refresh now
+    refreshToken().catch(() => {})
+    return
+  }
+  refreshTimeout = window.setTimeout(() => {
+    refreshToken().catch(() => {})
+  }, delay)
+}
+
+// listen for token changes to (re)schedule proactive refresh
+window.addEventListener('tokensChanged', () => scheduleRefreshFromAccess())
+// schedule on load if token exists
+scheduleRefreshFromAccess()
 
 export async function apiFetch(input: RequestInfo, init: RequestInit = {}): Promise<Response> {
   let access = getAccess()
@@ -35,7 +93,7 @@ export async function apiFetch(input: RequestInfo, init: RequestInit = {}): Prom
   let response = await fetch(input, { ...init, headers: makeHeaders(init.headers) })
 
   if (response.status === 401) {
-    // try refresh once
+    // try refresh once (queued)
     const ok = await refreshToken()
     if (!ok) {
       clearTokens()
