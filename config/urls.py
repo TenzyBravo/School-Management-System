@@ -16,6 +16,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.views.generic import RedirectView
 
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
@@ -25,9 +27,18 @@ urlpatterns = [
     path('api/v1/', include('apps.academics.urls')),
     path('api/v1/', include('apps.schools.urls')),
     path('api/v1/', include('apps.students.urls')),
+    path('api/v1/', include('apps.attendance.urls')),
     
     # Swagger UI
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
+
+# Development convenience: redirect certain frontend routes to the Vite dev server.
+# This allows developers to visit http://localhost:8000/teacher/ and be redirected
+# to the frontend dev server at http://localhost:5173/teacher/ when DEBUG=True.
+if settings.DEBUG:
+    urlpatterns += [
+        path('teacher/', RedirectView.as_view(url='http://localhost:5173/teacher/', permanent=False)),
+    ]

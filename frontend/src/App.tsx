@@ -2,42 +2,38 @@ import React from 'react'
 import SchoolsList from './components/SchoolsList'
 import Login from './components/Login'
 import StudentsPage from './components/StudentsPage'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import { useState } from 'react'
 
-export default function App() {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('access'))
+function AppInner() {
+  const { isAuthenticated, logout } = useAuth()
   const [selectedSchool, setSelectedSchool] = useState<string | null>(null)
-
-  function handleLogin(access: string, refresh: string) {
-    localStorage.setItem('access', access)
-    localStorage.setItem('refresh', refresh)
-    setToken(access)
-  }
-
-  function handleLogout() {
-    localStorage.removeItem('access')
-    localStorage.removeItem('refresh')
-    setToken(null)
-    setSelectedSchool(null)
-  }
 
   return (
     <div style={{ padding: 24, fontFamily: 'Inter, Arial, sans-serif' }}>
       <h1>School Management - Dev UI</h1>
-      {!token ? (
-        <Login onLogin={handleLogin} />
+      {!isAuthenticated ? (
+        <Login />
       ) : selectedSchool ? (
         <div>
           <button onClick={() => setSelectedSchool(null)}>← Back to schools</button>
-          <button style={{ marginLeft: 8 }} onClick={handleLogout}>Logout</button>
+          <button style={{ marginLeft: 8 }} onClick={logout}>Logout</button>
           <StudentsPage schoolId={selectedSchool} />
         </div>
       ) : (
         <div>
-          <button onClick={handleLogout}>Logout</button>
+          <button onClick={logout}>Logout</button>
           <SchoolsList onSelectSchool={(id:string)=>setSelectedSchool(id)} />
         </div>
       )}
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   )
 }
