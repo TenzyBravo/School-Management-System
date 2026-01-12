@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { apiFetch } from '../lib/api'
 
 type School = {
   id: string
@@ -11,7 +12,7 @@ export default function SchoolsList() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/v1/schools/')
+    apiFetch('/api/v1/schools/')
       .then((r) => r.json())
       .then((data) => setSchools(data))
       .catch((err) => {

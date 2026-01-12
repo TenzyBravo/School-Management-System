@@ -27,3 +27,4 @@ venv.bak/
 
 # Docker
 .docker_data/
+frontend/node_modules/

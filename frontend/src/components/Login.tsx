@@ -1,6 +1,11 @@
 import React, { useState } from 'react'
 
-export default function Login({ onLogin }: { onLogin: (access: string, refresh: string) => void }) {
+import { setTokens } from '../lib/auth'
+
+import { useAuth } from '../context/AuthContext'
+
+export default function Login() {
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -10,20 +15,11 @@ export default function Login({ onLogin }: { onLogin: (access: string, refresh: 
     e.preventDefault()
     setLoading(true)
     setError(null)
-    fetch('/api/v1/auth/login/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.access) {
-          onLogin(data.access, data.refresh)
-        } else {
-          setError('Invalid credentials')
-        }
+    login(email, password)
+      .then((ok) => {
+        if (!ok) setError('Invalid credentials')
       })
-      .catch((err) => setError('Network error'))
+      .catch(() => setError('Network error'))
       .finally(() => setLoading(false))
   }
 
