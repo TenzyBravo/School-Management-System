@@ -17,7 +17,9 @@ SECURE_HSTS_PRELOAD = True
 
 # CORS Settings
 CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='').split(',')
+# Handle empty CORS origins properly
+cors_origins = config('CORS_ALLOWED_ORIGINS', default='')
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
 
 # Database - Override with DATABASE_URL if available
 if config('DATABASE_URL', default=None):
