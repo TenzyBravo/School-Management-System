@@ -9,6 +9,7 @@ services:
     name: school-management-api
     runtime: python
     plan: free
+    rootDirectory: school_management
     buildCommand: "./build.sh"
     startCommand: "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
     envVars:
