@@ -75,23 +75,39 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
-DB_ENGINE = config('SQL_ENGINE', default='django.db.backends.postgresql')
-DB_NAME = config('SQL_DATABASE', default='school_db')
-DB_USER = config('SQL_USER', default='postgres')
-DB_PASSWORD = config('SQL_PASSWORD', default='postgres')
-DB_HOST = config('SQL_HOST', default='db')
-DB_PORT = config('SQL_PORT', default='5432')
+# Support both DATABASE_URL (for Render) and individual settings (for local/Docker)
+import dj_database_url
 
-DATABASES = {
-    'default': {
-        'ENGINE': DB_ENGINE,
-        'NAME': DB_NAME,
-        'USER': DB_USER,
-        'PASSWORD': DB_PASSWORD,
-        'HOST': DB_HOST,
-        'PORT': DB_PORT,
+DATABASE_URL = config('DATABASE_URL', default=None)
+
+if DATABASE_URL:
+    # Use DATABASE_URL if available (production/Render)
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    # Use individual settings for local development
+    DB_ENGINE = config('SQL_ENGINE', default='django.db.backends.postgresql')
+    DB_NAME = config('SQL_DATABASE', default='school_db')
+    DB_USER = config('SQL_USER', default='postgres')
+    DB_PASSWORD = config('SQL_PASSWORD', default='postgres')
+    DB_HOST = config('SQL_HOST', default='db')
+    DB_PORT = config('SQL_PORT', default='5432')
+
+    DATABASES = {
+        'default': {
+            'ENGINE': DB_ENGINE,
+            'NAME': DB_NAME,
+            'USER': DB_USER,
+            'PASSWORD': DB_PASSWORD,
+            'HOST': DB_HOST,
+            'PORT': DB_PORT,
+        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
