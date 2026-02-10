@@ -18,19 +18,30 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.views.generic import RedirectView
-from django.http import HttpResponse, HttpResponseNotFound
+from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
 import os
 
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
+def health_check(request):
+    """Simple health check endpoint"""
+    return JsonResponse({
+        'status': 'healthy',
+        'message': 'School Management System API is running',
+        'allowed_hosts': settings.ALLOWED_HOSTS,
+        'debug': settings.DEBUG
+    })
+
 urlpatterns = [
+    path('', health_check, name='health'),
+    path('health/', health_check, name='health-check'),
     path('admin/', admin.site.urls),
     path('api/v1/', include('apps.users.urls')),
     path('api/v1/', include('apps.academics.urls')),
     path('api/v1/', include('apps.schools.urls')),
     path('api/v1/', include('apps.students.urls')),
     path('api/v1/', include('apps.attendance.urls')),
-    
+
     # Swagger UI
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
