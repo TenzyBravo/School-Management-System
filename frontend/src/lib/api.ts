@@ -1,5 +1,8 @@
 import { getAccess, getRefresh, setAccess, clearTokens } from './auth'
 
+// API base URL from environment variable
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+
 let refreshPromise: Promise<boolean> | null = null
 let refreshTimeout: number | null = null
 
@@ -19,7 +22,7 @@ async function doRefresh(): Promise<boolean> {
   const refresh = getRefresh()
   if (!refresh) return false
   try {
-    const res = await fetch('/api/v1/auth/refresh/', {
+    const res = await fetch(`${API_BASE_URL}/api/v1/auth/refresh/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh })
@@ -90,7 +93,9 @@ export async function apiFetch(input: RequestInfo, init: RequestInit = {}): Prom
     return headers
   }
 
-  let response = await fetch(input, { ...init, headers: makeHeaders(init.headers) })
+  // Prepend API_BASE_URL if input is a string starting with '/'
+  const url = typeof input === 'string' && input.startsWith('/') ? `${API_BASE_URL}${input}` : input
+  let response = await fetch(url, { ...init, headers: makeHeaders(init.headers) })
 
   if (response.status === 401) {
     // try refresh once (queued)
@@ -102,7 +107,7 @@ export async function apiFetch(input: RequestInfo, init: RequestInit = {}): Prom
       throw new Error('unauthenticated')
     }
     access = getAccess()
-    response = await fetch(input, { ...init, headers: makeHeaders(init.headers) })
+    response = await fetch(url, { ...init, headers: makeHeaders(init.headers) })
   }
 
   return response
