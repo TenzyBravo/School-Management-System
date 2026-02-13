@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { setTokens, clearTokens, getAccess } from '../lib/auth'
 import { scheduleRefreshFromAccess } from '../lib/api'
 
+const API_BASE_URL = 'https://school-management-api-tkhv.onrender.com'
+
 type AuthContextType = {
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<boolean>
@@ -24,7 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   async function login(email: string, password: string) {
     try {
-      const res = await fetch('/api/v1/auth/login/', {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/login/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
