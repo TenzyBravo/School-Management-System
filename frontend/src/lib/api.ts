@@ -1,7 +1,7 @@
 import { getAccess, getRefresh, setAccess, clearTokens } from './auth'
 
-// API base URL from environment variable
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://school-management-api-tkhv.onrender.com'
+// API base URL - hardcoded for now since env var isn't working
+const API_BASE_URL = 'https://school-management-api-tkhv.onrender.com'
 
 let refreshPromise: Promise<boolean> | null = null
 let refreshTimeout: number | null = null
