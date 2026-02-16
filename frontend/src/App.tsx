@@ -3,6 +3,7 @@ import SchoolsList from './components/SchoolsList'
 import Login from './components/Login'
 import Dashboard from './components/Dashboard'
 import StudentsPage from './components/StudentsPage'
+import AcademicsManager from './components/AcademicsManager'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useState } from 'react'
 
@@ -98,7 +99,7 @@ function AppInner() {
             )
           )}
           {currentSection === 'students' && <div>Students section coming soon...</div>}
-          {currentSection === 'academics' && <div>Academics section coming soon...</div>}
+          {currentSection === 'academics' && <AcademicsManager />}
           {currentSection === 'reports' && <div>Reports section coming soon...</div>}
         </div>
       </div>
