@@ -14,7 +14,7 @@ export default function SchoolsList() {
   useEffect(() => {
     apiFetch('/api/v1/schools/')
       .then((r) => r.json())
-      .then((data) => setSchools(data))
+      .then((data) => setSchools(data.results || data))
       .catch((err) => {
         console.error(err)
         setSchools([])
