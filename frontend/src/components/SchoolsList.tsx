@@ -7,7 +7,11 @@ type School = {
   code: string
 }
 
-export default function SchoolsList() {
+type SchoolsListProps = {
+  onSelectSchool?: (id: string) => void
+}
+
+export default function SchoolsList({ onSelectSchool }: SchoolsListProps) {
   const [schools, setSchools] = useState<School[] | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -27,13 +31,47 @@ export default function SchoolsList() {
 
   return (
     <div>
-      <ul>
+      <h2 style={{ fontSize: '20px', marginBottom: '20px', color: '#1F2937' }}>Schools</h2>
+      <div style={{ display: 'grid', gap: '16px' }}>
         {schools.map((s) => (
-          <li key={s.id}>
-            <strong>{s.name}</strong> — {s.code}
-          </li>
+          <div
+            key={s.id}
+            onClick={() => onSelectSchool && onSelectSchool(s.id)}
+            style={{
+              padding: '20px',
+              border: '1px solid #E5E7EB',
+              borderRadius: '8px',
+              cursor: onSelectSchool ? 'pointer' : 'default',
+              transition: 'all 0.2s ease',
+              background: 'white'
+            }}
+            onMouseEnter={(e) => {
+              if (onSelectSchool) {
+                e.currentTarget.style.borderColor = '#4F46E5'
+                e.currentTarget.style.boxShadow = '0 4px 6px rgba(79, 70, 229, 0.1)'
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#E5E7EB'
+              e.currentTarget.style.boxShadow = 'none'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1F2937' }}>
+                  {s.name}
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#6B7280' }}>
+                  Code: {s.code}
+                </p>
+              </div>
+              {onSelectSchool && (
+                <span style={{ fontSize: '20px', color: '#4F46E5' }}>→</span>
+              )}
+            </div>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   )
 }
