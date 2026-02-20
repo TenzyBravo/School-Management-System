@@ -21,13 +21,37 @@ function parseJwt(token: string | null) {
 async function doRefresh(): Promise<boolean> {
   const refresh = getRefresh()
   if (!refresh) return false
+
+  // Check if refresh token is expired before trying
+  const payload = parseJwt(refresh)
+  if (payload && payload.exp) {
+    const expiryMs = payload.exp * 1000
+    if (Date.now() >= expiryMs) {
+      console.log('Refresh token has expired')
+      return false
+    }
+  }
+
   try {
+    // Increase timeout for sleeping backend on Render (can take 30-50 seconds to wake)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
+
     const res = await fetch(`${API_BASE_URL}/api/v1/auth/refresh/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh })
+      body: JSON.stringify({ refresh }),
+      signal: controller.signal
     })
-    if (!res.ok) return false
+    clearTimeout(timeoutId)
+
+    if (!res.ok) {
+      // If 401, the refresh token is invalid/expired
+      if (res.status === 401) {
+        console.log('Refresh token rejected by server')
+      }
+      return false
+    }
     const data = await res.json()
     if (data.access) {
       setAccess(data.access)
@@ -37,6 +61,7 @@ async function doRefresh(): Promise<boolean> {
     }
     return false
   } catch (e) {
+    console.error('Token refresh failed:', e)
     return false
   }
 }

@@ -4,6 +4,7 @@ import Login from './components/Login'
 import Dashboard from './components/Dashboard'
 import StudentsPage from './components/StudentsPage'
 import AcademicsManager from './components/AcademicsManager'
+import AttendanceModule from './components/AttendanceModule'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useState } from 'react'
 
@@ -98,7 +99,7 @@ function AppInner() {
               <SchoolsList onSelectSchool={(id: string) => setSelectedSchool(id)} />
             )
           )}
-          {currentSection === 'students' && <div>Students section coming soon...</div>}
+          {currentSection === 'students' && <AttendanceModule />}
           {currentSection === 'academics' && <AcademicsManager />}
           {currentSection === 'reports' && <div>Reports section coming soon...</div>}
         </div>
