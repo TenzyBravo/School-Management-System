@@ -11,7 +11,8 @@ python manage.py collectstatic --no-input
 # Run database migrations
 python manage.py migrate
 
-# Create superuser if environment variables are set
+# Create or update superuser if environment variables are set
 if [[ -n "$DJANGO_SUPERUSER_USERNAME" && -n "$DJANGO_SUPERUSER_PASSWORD" && -n "$DJANGO_SUPERUSER_EMAIL" ]]; then
-    python manage.py createsuperuser --noinput || true
+    echo "Ensuring superuser exists..."
+    python manage.py ensure_superuser
 fi
