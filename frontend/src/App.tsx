@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard'
 import StudentsPage from './components/StudentsPage'
 import AcademicsManager from './components/AcademicsManager'
 import AttendanceModule from './components/AttendanceModule'
+import MarksModule from './components/MarksModule'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useState } from 'react'
 
@@ -51,9 +52,9 @@ function AppInner() {
             </button>
             <h1 style={{ margin: 0, fontSize: '24px', color: '#1F2937' }}>
               {currentSection === 'schools' && 'Schools'}
-              {currentSection === 'students' && 'Students'}
+              {currentSection === 'students' && 'Attendance'}
               {currentSection === 'academics' && 'Academics'}
-              {currentSection === 'reports' && 'Reports'}
+              {currentSection === 'reports' && 'Marks & Reports'}
             </h1>
           </div>
           <button
@@ -101,7 +102,7 @@ function AppInner() {
           )}
           {currentSection === 'students' && <AttendanceModule />}
           {currentSection === 'academics' && <AcademicsManager />}
-          {currentSection === 'reports' && <div>Reports section coming soon...</div>}
+          {currentSection === 'reports' && <MarksModule />}
         </div>
       </div>
     </div>
