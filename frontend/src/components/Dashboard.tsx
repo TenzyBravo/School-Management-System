@@ -17,11 +17,25 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       color: '#4F46E5'
     },
     {
-      id: 'students',
+      id: 'studentsmanager',
       title: 'Students',
-      description: 'View student records, attendance, and academic progress',
+      description: 'Manage student records and bulk uploads',
       icon: '👨‍🎓',
       color: '#059669'
+    },
+    {
+      id: 'faculty',
+      title: 'Faculty',
+      description: 'Manage teachers, staff, and user accounts',
+      icon: '👩‍🏫',
+      color: '#F59E0B'
+    },
+    {
+      id: 'students',
+      title: 'Attendance',
+      description: 'Mark daily attendance and view statistics',
+      icon: '📋',
+      color: '#10B981'
     },
     {
       id: 'academics',

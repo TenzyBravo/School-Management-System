@@ -1,4 +1,28 @@
 from apps.core.context import set_current_context, clear_context
+from rest_framework.pagination import PageNumberPagination
+
+
+class StandardResultsSetPagination(PageNumberPagination):
+    """
+    Standard pagination class enforced across all viewsets.
+    Ensures consistent API responses with pagination metadata.
+    """
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class PaginationEnforcementMixin:
+    """
+    Mixin to enforce pagination on all list endpoints.
+    Prevents viewsets from disabling pagination.
+    """
+    pagination_class = StandardResultsSetPagination
+
+    def get_pagination_class(self):
+        """Prevent pagination from being disabled."""
+        return self.pagination_class
+
 
 class TenantViewSetMixin:
     """

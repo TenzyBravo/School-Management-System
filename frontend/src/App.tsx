@@ -3,6 +3,8 @@ import SchoolsList from './components/SchoolsList'
 import Login from './components/Login'
 import Dashboard from './components/Dashboard'
 import StudentsPage from './components/StudentsPage'
+import StudentsManager from './components/StudentsManager'
+import UsersManager from './components/UsersManager'
 import AcademicsManager from './components/AcademicsManager'
 import AttendanceModule from './components/AttendanceModule'
 import MarksModule from './components/MarksModule'
@@ -52,6 +54,8 @@ function AppInner() {
             </button>
             <h1 style={{ margin: 0, fontSize: '24px', color: '#1F2937' }}>
               {currentSection === 'schools' && 'Schools'}
+              {currentSection === 'studentsmanager' && 'Students Management'}
+              {currentSection === 'faculty' && 'Faculty & Staff'}
               {currentSection === 'students' && 'Attendance'}
               {currentSection === 'academics' && 'Academics'}
               {currentSection === 'reports' && 'Marks & Reports'}
@@ -100,6 +104,8 @@ function AppInner() {
               <SchoolsList onSelectSchool={(id: string) => setSelectedSchool(id)} />
             )
           )}
+          {currentSection === 'studentsmanager' && <StudentsManager />}
+          {currentSection === 'faculty' && <UsersManager />}
           {currentSection === 'students' && <AttendanceModule />}
           {currentSection === 'academics' && <AcademicsManager />}
           {currentSection === 'reports' && <MarksModule />}

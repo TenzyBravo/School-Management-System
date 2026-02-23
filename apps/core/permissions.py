@@ -38,11 +38,31 @@ class CanAccessStudent(BasePermission):
         if user.is_school_admin:
             return True
         
-        # Teachers: Logic will be refined when Student/TeacherAssignment models exist. 
-        # For now, allow same school teachers access.
+        # Teachers: Can only access students in grades/streams they are assigned to
         if user.role == UserRole.TEACHER:
-            # TODO: Refine to allow only assigned students
-            return True
+            # Import here to avoid circular dependency
+            from apps.academics.models import TeacherAssignment, AcademicYear
+
+            # Get the student's current class (grade)
+            if not hasattr(obj, 'current_class') or not obj.current_class:
+                # Student has no assigned class, deny access unless class teacher
+                return False
+
+            # Get current academic year
+            try:
+                current_year = AcademicYear.objects.get(is_current=True)
+            except AcademicYear.DoesNotExist:
+                # No current academic year set, deny access
+                return False
+
+            # Check if teacher has any assignment for this student's grade in current year
+            has_assignment = TeacherAssignment.objects.filter(
+                teacher=user,
+                grade=obj.current_class,
+                academic_year=current_year
+            ).exists()
+
+            return has_assignment
         
         # Social officers can access all in their school
         if user.role == UserRole.SOCIAL_OFFICER:
