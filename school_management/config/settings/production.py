@@ -17,9 +17,17 @@ SECURE_HSTS_PRELOAD = True
 
 # CORS Settings
 CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_CREDENTIALS = True
+
 # Handle empty CORS origins properly
 cors_origins = config('CORS_ALLOWED_ORIGINS', default='')
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
+
+# Allow all Vercel preview and production URLs using regex
+# This handles dynamic Vercel preview URLs (e.g., school-management-system-xxxxx.vercel.app)
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",  # All Vercel deployments (preview + production)
+]
 
 # Database - Override with DATABASE_URL if available
 if config('DATABASE_URL', default=None):
