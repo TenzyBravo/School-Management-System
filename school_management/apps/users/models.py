@@ -15,7 +15,7 @@ class UserRole(models.TextChoices):
 class User(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     email = models.EmailField(unique=True)
-    employee_number = models.CharField(max_length=50, unique=True, help_text="Employee ID - Unique identifier")
+    employee_number = models.CharField(max_length=50, unique=True, help_text="Employee ID - Unique identifier", default='TEMP')
     phone = models.CharField(max_length=20, blank=True)
     role = models.CharField(
         max_length=50,

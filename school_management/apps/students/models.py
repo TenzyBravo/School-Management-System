@@ -11,7 +11,7 @@ class Student(TenantAwareModel):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     middle_name = models.CharField(max_length=100, blank=True, null=True)
-    child_id = models.CharField(max_length=50, help_text="Child ID/CHL - Unique identifier")
+    child_id = models.CharField(max_length=50, help_text="Child ID/CHL - Unique identifier", default='TEMP')
     admission_number = models.CharField(max_length=50, blank=True, null=True)  # Keep for legacy data
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
