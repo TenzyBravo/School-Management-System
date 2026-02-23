@@ -135,7 +135,7 @@ export default function MarksReports() {
               <div style={{ fontSize: '32px', fontWeight: '700' }}>{performance.length}</div>
             </div>
             <div>
-              <div style={{ fontSize: '14px', opacity: 0.9', marginBottom: '4px' }}>Total Assessments</div>
+              <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Total Assessments</div>
               <div style={{ fontSize: '32px', fontWeight: '700' }}>
                 {performance.reduce((sum, p) => sum + p.total_assessments, 0)}
               </div>
