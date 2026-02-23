@@ -54,10 +54,10 @@ class StudentViewSet(viewsets.ModelViewSet):
         Expected columns:
         - first_name (required)
         - last_name (required)
-        - admission_number (required, unique)
+        - child_id (required, unique) - Child ID/CHL
         - date_of_birth (YYYY-MM-DD format)
         - gender (M/F)
-        - current_grade (grade ID or name)
+        - admission_number (optional, for legacy data)
         - email (optional)
         - phone (optional)
         - address (optional)
@@ -106,24 +106,24 @@ class StudentViewSet(viewsets.ModelViewSet):
                     # Required fields
                     first_name = str(row.get('first_name', '')).strip()
                     last_name = str(row.get('last_name', '')).strip()
-                    admission_number = str(row.get('admission_number', '')).strip()
+                    child_id = str(row.get('child_id', '')).strip()
 
-                    if not all([first_name, last_name, admission_number]):
+                    if not all([first_name, last_name, child_id]):
                         errors.append({
                             'row': idx,
-                            'error': 'Missing required fields (first_name, last_name, admission_number)'
+                            'error': 'Missing required fields (first_name, last_name, child_id)'
                         })
                         continue
 
                     # Check for duplicates
                     if Student.objects.filter(
-                        admission_number=admission_number,
+                        child_id=child_id,
                         school=request.user.school
                     ).exists():
                         skipped.append({
                             'row': idx,
-                            'admission_number': admission_number,
-                            'reason': 'Student with this admission number already exists'
+                            'child_id': child_id,
+                            'reason': 'Student with this Child ID already exists'
                         })
                         continue
 
@@ -153,7 +153,8 @@ class StudentViewSet(viewsets.ModelViewSet):
                         school=request.user.school,
                         first_name=first_name,
                         last_name=last_name,
-                        admission_number=admission_number,
+                        child_id=child_id,
+                        admission_number=str(row.get('admission_number', '')).strip() or None,
                         date_of_birth=date_of_birth,
                         gender=gender if gender else None,
                         email=str(row.get('email', '')).strip() or None,
@@ -163,7 +164,7 @@ class StudentViewSet(viewsets.ModelViewSet):
 
                     created.append({
                         'row': idx,
-                        'admission_number': admission_number,
+                        'child_id': child_id,
                         'name': f'{first_name} {last_name}'
                     })
 
@@ -201,12 +202,12 @@ class StudentViewSet(viewsets.ModelViewSet):
 
         writer = csv.writer(response)
         writer.writerow([
-            'first_name', 'last_name', 'admission_number', 'date_of_birth',
-            'gender', 'email', 'phone', 'address'
+            'first_name', 'last_name', 'child_id', 'date_of_birth',
+            'gender', 'admission_number', 'email', 'phone', 'address'
         ])
         writer.writerow([
-            'John', 'Doe', 'STU001', '2010-05-15', 'M',
-            'john.doe@example.com', '+260971234567', '123 Main St'
+            'John', 'Doe', 'CHL001', '2010-05-15', 'M',
+            'STU001', 'john.doe@example.com', '+260971234567', '123 Main St'
         ])
 
         return response 

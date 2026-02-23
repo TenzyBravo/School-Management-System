@@ -11,7 +11,8 @@ class Student(TenantAwareModel):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     middle_name = models.CharField(max_length=100, blank=True, null=True)
-    admission_number = models.CharField(max_length=50)
+    child_id = models.CharField(max_length=50, help_text="Child ID/CHL - Unique identifier")
+    admission_number = models.CharField(max_length=50, blank=True, null=True)  # Keep for legacy data
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     enrollment_date = models.DateField()
@@ -29,11 +30,15 @@ class Student(TenantAwareModel):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        unique_together = ('school', 'admission_number')
+        unique_together = ('school', 'child_id')
         ordering = ['last_name', 'first_name']
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name} ({self.admission_number})"
+        return f"{self.first_name} {self.last_name} ({self.child_id})"
+
+    @property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}"
 
 
 class StudentProfile(models.Model):

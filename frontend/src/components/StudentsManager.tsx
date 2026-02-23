@@ -6,7 +6,8 @@ interface Student {
   id: string
   first_name: string
   last_name: string
-  admission_number: string
+  child_id: string
+  admission_number: string | null
   date_of_birth: string | null
   gender: string | null
   email: string | null
@@ -87,7 +88,7 @@ export default function StudentsManager() {
                 color: '#374151',
                 borderBottom: '1px solid #E5E7EB'
               }}>
-                Admission #
+                Child ID
               </th>
               <th style={{
                 padding: '12px',
@@ -135,7 +136,7 @@ export default function StudentsManager() {
             {students.map(student => (
               <tr key={student.id} style={{ borderBottom: '1px solid #E5E7EB' }}>
                 <td style={{ padding: '12px', fontSize: '14px', color: '#6B7280' }}>
-                  {student.admission_number}
+                  {student.child_id}
                 </td>
                 <td style={{ padding: '12px', fontSize: '14px', color: '#1F2937', fontWeight: '500' }}>
                   {student.first_name} {student.last_name}

@@ -12,9 +12,9 @@ class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = [
-            'id', 'first_name', 'last_name', 'middle_name', 
-            'admission_number', 'date_of_birth', 'gender', 
-            'enrollment_date', 'current_class', 'is_active', 
+            'id', 'first_name', 'last_name', 'middle_name',
+            'child_id', 'admission_number', 'date_of_birth', 'gender',
+            'enrollment_date', 'current_class', 'is_active',
             'profile', 'school', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'school']

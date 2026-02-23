@@ -6,6 +6,7 @@ interface User {
   id: string
   first_name: string
   last_name: string
+  employee_number: string
   email: string
   username: string
   role: string
@@ -119,6 +120,10 @@ export default function UsersManager() {
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginTop: '12px' }}>
+                    <div>
+                      <span style={{ fontSize: '12px', color: '#6B7280' }}>Employee ID: </span>
+                      <span style={{ fontSize: '14px', color: '#1F2937', fontWeight: '500' }}>{user.employee_number}</span>
+                    </div>
                     <div>
                       <span style={{ fontSize: '12px', color: '#6B7280' }}>Username: </span>
                       <span style={{ fontSize: '14px', color: '#1F2937', fontWeight: '500' }}>{user.username}</span>

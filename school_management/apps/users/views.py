@@ -47,6 +47,7 @@ class UserViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         Expected columns:
         - first_name (required)
         - last_name (required)
+        - employee_number (required, unique) - Employee ID
         - email (required, unique)
         - username (required, unique)
         - password (required)
@@ -99,15 +100,16 @@ class UserViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                     # Required fields
                     first_name = str(row.get('first_name', '')).strip()
                     last_name = str(row.get('last_name', '')).strip()
+                    employee_number = str(row.get('employee_number', '')).strip()
                     email = str(row.get('email', '')).strip().lower()
                     username = str(row.get('username', '')).strip()
                     password = str(row.get('password', '')).strip()
                     role = str(row.get('role', '')).strip().upper()
 
-                    if not all([first_name, last_name, email, username, password, role]):
+                    if not all([first_name, last_name, employee_number, email, username, password, role]):
                         errors.append({
                             'row': idx,
-                            'error': 'Missing required fields (first_name, last_name, email, username, password, role)'
+                            'error': 'Missing required fields (first_name, last_name, employee_number, email, username, password, role)'
                         })
                         continue
 
@@ -120,6 +122,14 @@ class UserViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                         continue
 
                     # Check for duplicates
+                    if User.objects.filter(employee_number=employee_number).exists():
+                        skipped.append({
+                            'row': idx,
+                            'employee_number': employee_number,
+                            'reason': 'User with this employee number already exists'
+                        })
+                        continue
+
                     if User.objects.filter(email=email).exists():
                         skipped.append({
                             'row': idx,
@@ -139,6 +149,7 @@ class UserViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                     # Create user
                     user = User.objects.create_user(
                         username=username,
+                        employee_number=employee_number,
                         email=email,
                         password=password,
                         first_name=first_name,
@@ -150,6 +161,7 @@ class UserViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
 
                     created.append({
                         'row': idx,
+                        'employee_number': employee_number,
                         'email': email,
                         'name': f'{first_name} {last_name}',
                         'role': role
@@ -189,15 +201,15 @@ class UserViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
 
         writer = csv.writer(response)
         writer.writerow([
-            'first_name', 'last_name', 'email', 'username',
+            'first_name', 'last_name', 'employee_number', 'email', 'username',
             'password', 'role', 'phone'
         ])
         writer.writerow([
-            'Jane', 'Smith', 'jane.smith@school.com', 'jsmith',
+            'Jane', 'Smith', 'EMP001', 'jane.smith@school.com', 'jsmith',
             'SecurePass123', 'TEACHER', '+260971234567'
         ])
         writer.writerow([
-            'John', 'Doe', 'john.doe@school.com', 'jdoe',
+            'John', 'Doe', 'EMP002', 'john.doe@school.com', 'jdoe',
             'SecurePass456', 'HEADTEACHER', '+260977654321'
         ])
 
