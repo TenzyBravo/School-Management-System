@@ -27,6 +27,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_spectacular',
     'auditlog',
+    'cloudinary',
+    'cloudinary_storage',
 
     # Local apps
     'apps.core',
@@ -127,8 +129,16 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Cloudinary – used for profile picture storage in production.
+# Set CLOUDINARY_URL in your environment (e.g. cloudinary://api_key:api_secret@cloud_name)
+CLOUDINARY_URL = config('CLOUDINARY_URL', default=None)
+if CLOUDINARY_URL:
+    import cloudinary
+    cloudinary.config(cloudinary_url=CLOUDINARY_URL)
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

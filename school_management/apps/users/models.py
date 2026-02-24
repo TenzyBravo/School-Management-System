@@ -30,6 +30,12 @@ class User(AbstractUser):
         blank=True,
         related_name='staff'
     )
+    profile_picture = models.ImageField(
+        upload_to='profile_pictures/',
+        null=True,
+        blank=True,
+        help_text="Staff profile picture"
+    )
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name']

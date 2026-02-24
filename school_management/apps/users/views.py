@@ -8,10 +8,11 @@ from apps.core.mixins import TenantViewSetMixin
 from .models import User, UserRole
 
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import UserSerializer, CustomTokenObtainPairSerializer
+from .serializers import UserSerializer, ProfileSerializer, CustomTokenObtainPairSerializer
 import csv
 import io
 import pandas as pd
+
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -26,6 +27,24 @@ class MeView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class ProfileView(generics.RetrieveUpdateAPIView):
+    """
+    Allows authenticated staff to view and update their own profile,
+    including uploading a profile picture and changing their password.
+    """
+    serializer_class = ProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_object(self):
+        return self.request.user
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
 
 class UserViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
