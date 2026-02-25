@@ -37,14 +37,11 @@ class StudentViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        # Automatically assign school from user
-        if self.request.user.school:
-           serializer.save(school=self.request.user.school)
-        else:
-            # If HQ user creating, they might need to specify school?
-            # For now, assume HQ users can't create students without a school context.
-            # Or reliance on TenantMiddleware + context.
-            serializer.save()
+        school = getattr(self.request.user, 'school', None)
+        if not school:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError("Your account is not linked to a school.")
+        serializer.save(school=school)
 
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def bulk_upload(self, request):
@@ -148,6 +145,18 @@ class StudentViewSet(viewsets.ModelViewSet):
                         })
                         continue
 
+                    # enrollment_date: use column or today
+                    enroll_str = str(row.get('enrollment_date', '')).strip()
+                    if enroll_str and enroll_str != 'nan':
+                        try:
+                            enrollment_date = datetime.strptime(enroll_str, '%Y-%m-%d').date()
+                        except ValueError:
+                            from datetime import date as _date
+                            enrollment_date = _date.today()
+                    else:
+                        from datetime import date as _date
+                        enrollment_date = _date.today()
+
                     # Create student
                     student = Student.objects.create(
                         school=request.user.school,
@@ -156,11 +165,22 @@ class StudentViewSet(viewsets.ModelViewSet):
                         child_id=child_id,
                         admission_number=str(row.get('admission_number', '')).strip() or None,
                         date_of_birth=date_of_birth,
-                        gender=gender if gender else None,
-                        email=str(row.get('email', '')).strip() or None,
-                        phone=str(row.get('phone', '')).strip() or None,
-                        address=str(row.get('address', '')).strip() or None
+                        gender=gender if gender else 'M',
+                        enrollment_date=enrollment_date,
                     )
+
+                    # Create guardian profile if provided
+                    guardian_name = str(row.get('guardian_name', '')).strip()
+                    guardian_phone = str(row.get('guardian_phone', '')).strip()
+                    if guardian_name and guardian_phone:
+                        from .models import StudentProfile
+                        StudentProfile.objects.create(
+                            student=student,
+                            guardian_name=guardian_name,
+                            guardian_phone=guardian_phone,
+                            guardian_email=str(row.get('guardian_email', '')).strip() or None,
+                            address=str(row.get('address', '')).strip() or '',
+                        )
 
                     created.append({
                         'row': idx,
@@ -203,11 +223,13 @@ class StudentViewSet(viewsets.ModelViewSet):
         writer = csv.writer(response)
         writer.writerow([
             'first_name', 'last_name', 'child_id', 'date_of_birth',
-            'gender', 'admission_number', 'email', 'phone', 'address'
+            'gender', 'enrollment_date', 'admission_number',
+            'guardian_name', 'guardian_phone', 'guardian_email', 'address'
         ])
         writer.writerow([
             'John', 'Doe', 'CHL001', '2010-05-15', 'M',
-            'STU001', 'john.doe@example.com', '+260971234567', '123 Main St'
+            '2024-01-15', 'STU001',
+            'Jane Doe', '+260971234567', 'jane@example.com', '123 Main St'
         ])
 
         return response 
