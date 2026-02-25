@@ -125,6 +125,8 @@ class GradeViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                 'id': gid,
                 'name': grade.name,
                 'level': grade.level,
+                'category': grade.category,
+                'category_display': grade.get_category_display(),
                 'total_students': sum(s['student_count'] for s in streams_data) + grade_counts.get(gid, 0),
                 'streams': streams_data,
             })

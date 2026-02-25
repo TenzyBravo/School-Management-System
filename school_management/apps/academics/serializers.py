@@ -22,10 +22,11 @@ class StreamSerializer(serializers.ModelSerializer):
 
 class GradeSerializer(serializers.ModelSerializer):
     streams = StreamSerializer(many=True, read_only=True)
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
 
     class Meta:
         model = Grade
-        fields = ['id', 'name', 'level', 'streams']
+        fields = ['id', 'name', 'level', 'category', 'category_display', 'streams']
 
 class SubjectSerializer(serializers.ModelSerializer):
     class Meta:

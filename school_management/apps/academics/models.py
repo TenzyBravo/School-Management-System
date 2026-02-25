@@ -35,10 +35,23 @@ class Term(models.Model):
     def __str__(self):
         return f"{self.name} ({self.academic_year})"
 
+class GradeCategory(models.TextChoices):
+    LOWER_PRIMARY  = 'LOWER_PRIMARY',  'Lower Primary'
+    UPPER_PRIMARY  = 'UPPER_PRIMARY',  'Upper Primary'
+    SECONDARY      = 'SECONDARY',      'Secondary'
+    OTHER          = 'OTHER',          'Other'
+
+
 class Grade(TenantAwareModel):
     # Tenant scoped
-    name = models.CharField(max_length=50)  # e.g., 'Grade 7'
-    level = models.IntegerField() # e.g., 7 for sorting
+    name = models.CharField(max_length=50)   # e.g., 'Grade 7', 'Form 2'
+    level = models.IntegerField()            # for ordering
+    category = models.CharField(
+        max_length=20,
+        choices=GradeCategory.choices,
+        default=GradeCategory.OTHER,
+        blank=True,
+    )
 
     class Meta:
         unique_together = ('school', 'name')

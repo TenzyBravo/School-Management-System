@@ -15,9 +15,19 @@ interface GradeInfo {
   id: string
   name: string
   level: number
+  category: string
+  category_display: string
   total_students: number
   streams: StreamInfo[]
 }
+
+const CAT_META: Record<string, { label: string; color: string; bg: string }> = {
+  LOWER_PRIMARY: { label: 'Lower Primary', color: '#059669', bg: '#ECFDF5' },
+  UPPER_PRIMARY: { label: 'Upper Primary', color: '#D97706', bg: '#FFFBEB' },
+  SECONDARY:     { label: 'Secondary',     color: '#4F46E5', bg: '#EEF2FF' },
+  OTHER:         { label: 'Other',         color: '#6B7280', bg: '#F9FAFB' },
+}
+const CAT_ORDER = ['LOWER_PRIMARY', 'UPPER_PRIMARY', 'SECONDARY', 'OTHER']
 
 // ─── Student shape (for drill-down) ─────────────────────────────────────────
 
@@ -189,88 +199,106 @@ export default function SchoolClassesView({ onNavigate }: Props) {
         ))}
       </div>
 
-      {/* Grade sections */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {grades.map((grade, gi) => {
-          const color = GRADE_COLORS[gi % GRADE_COLORS.length]
-          const isCollapsed = collapsedGrades.has(grade.id)
+      {/* Grade sections — grouped by category */}
+      {CAT_ORDER.map(cat => {
+        const catGrades = grades.filter(g => (g.category || 'OTHER') === cat)
+        if (!catGrades.length) return null
+        const meta = CAT_META[cat]
 
-          return (
-            <div key={grade.id} style={{
-              background: 'white', border: '1px solid #E5E7EB',
-              borderRadius: '14px', overflow: 'hidden',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-            }}>
-              {/* Grade header */}
-              <div
-                onClick={() => toggleGrade(grade.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '14px',
-                  padding: '16px 20px', cursor: 'pointer',
-                  borderLeft: `5px solid ${color}`,
-                  background: isCollapsed ? 'white' : '#FAFBFF',
-                }}
-              >
-                {/* Level badge */}
-                <div style={{
-                  width: '40px', height: '40px', borderRadius: '10px',
-                  background: color, color: 'white',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '16px', fontWeight: '700', flexShrink: 0,
-                }}>
-                  {grade.level}
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: '700', fontSize: '16px', color: '#1F2937' }}>{grade.name}</div>
-                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
-                    {grade.streams.length} class{grade.streams.length !== 1 ? 'es' : ''} · {grade.total_students} student{grade.total_students !== 1 ? 's' : ''}
-                  </div>
-                </div>
-
-                {/* Class count pill */}
-                {grade.streams.length > 0 && (
-                  <div style={{
-                    background: `${color}18`, color, padding: '4px 12px',
-                    borderRadius: '12px', fontSize: '12px', fontWeight: '600',
-                  }}>
-                    {grade.streams.length} {grade.streams.length === 1 ? 'class' : 'classes'}
-                  </div>
-                )}
-
-                <span style={{ color: '#9CA3AF', fontSize: '18px', transform: isCollapsed ? 'none' : 'rotate(180deg)', transition: 'transform 0.2s' }}>▾</span>
-              </div>
-
-              {/* Streams grid */}
-              {!isCollapsed && (
-                <div style={{ padding: '16px 20px', borderTop: '1px solid #F3F4F6' }}>
-                  {grade.streams.length === 0 ? (
-                    <div style={{ color: '#9CA3AF', fontSize: '13px', fontStyle: 'italic', padding: '8px 0' }}>
-                      No classes yet — go to Academics to add streams.
-                    </div>
-                  ) : (
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                      gap: '12px',
-                    }}>
-                      {grade.streams.map(stream => (
-                        <StreamCard
-                          key={stream.id}
-                          grade={grade}
-                          stream={stream}
-                          color={color}
-                          onOpen={() => openClass(grade, stream)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+        return (
+          <div key={cat} style={{ marginBottom: '28px' }}>
+            {/* Category heading */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ height: '4px', width: '28px', background: meta.color, borderRadius: '2px' }} />
+              <span style={{ fontSize: '13px', fontWeight: '700', color: meta.color, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {meta.label}
+              </span>
+              <div style={{ flex: 1, height: '1px', background: '#E5E7EB' }} />
+              <span style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                {catGrades.length} grade{catGrades.length !== 1 ? 's' : ''} · {catGrades.reduce((s, g) => s + g.total_students, 0)} students
+              </span>
             </div>
-          )
-        })}
-      </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {catGrades.map(grade => {
+                const isCollapsed = collapsedGrades.has(grade.id)
+                return (
+                  <div key={grade.id} style={{
+                    background: 'white', border: '1px solid #E5E7EB',
+                    borderRadius: '14px', overflow: 'hidden',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                  }}>
+                    {/* Grade header */}
+                    <div
+                      onClick={() => toggleGrade(grade.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '14px',
+                        padding: '16px 20px', cursor: 'pointer',
+                        borderLeft: `5px solid ${meta.color}`,
+                        background: isCollapsed ? 'white' : meta.bg,
+                      }}
+                    >
+                      <div style={{
+                        width: '40px', height: '40px', borderRadius: '10px',
+                        background: meta.color, color: 'white',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '16px', fontWeight: '700', flexShrink: 0,
+                      }}>
+                        {grade.level}
+                      </div>
+
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: '700', fontSize: '16px', color: '#1F2937' }}>{grade.name}</div>
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                          {grade.streams.length} class{grade.streams.length !== 1 ? 'es' : ''} · {grade.total_students} student{grade.total_students !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+
+                      {grade.streams.length > 0 && (
+                        <div style={{
+                          background: `${meta.color}18`, color: meta.color, padding: '4px 12px',
+                          borderRadius: '12px', fontSize: '12px', fontWeight: '600',
+                        }}>
+                          {grade.streams.length} {grade.streams.length === 1 ? 'class' : 'classes'}
+                        </div>
+                      )}
+
+                      <span style={{ color: '#9CA3AF', fontSize: '18px', transform: isCollapsed ? 'none' : 'rotate(180deg)', transition: 'transform 0.2s' }}>▾</span>
+                    </div>
+
+                    {/* Streams grid */}
+                    {!isCollapsed && (
+                      <div style={{ padding: '16px 20px', borderTop: '1px solid #F3F4F6' }}>
+                        {grade.streams.length === 0 ? (
+                          <div style={{ color: '#9CA3AF', fontSize: '13px', fontStyle: 'italic', padding: '8px 0' }}>
+                            No classes yet — go to Academics to add streams.
+                          </div>
+                        ) : (
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                            gap: '12px',
+                          }}>
+                            {grade.streams.map(stream => (
+                              <StreamCard
+                                key={stream.id}
+                                grade={grade}
+                                stream={stream}
+                                color={meta.color}
+                                onOpen={() => openClass(grade, stream)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
