@@ -6,6 +6,8 @@ const API_BASE_URL = 'https://school-management-api-tkhv.onrender.com'
 
 type AuthContextType = {
   isAuthenticated: boolean
+  userRole: string | null
+  userName: string | null
   login: (email: string, password: string) => Promise<boolean>
   logout: () => void
 }
@@ -32,21 +34,24 @@ function isTokenValid(token: string | null): boolean {
   return Date.now() < (expiryMs - 5000)
 }
 
+function getUserFromToken(token: string | null) {
+  const payload = parseJwt(token)
+  if (!payload) return { role: null, name: null }
+  return { role: payload.role || null, name: payload.name || null }
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    // On initial load, check if we have valid tokens
     const access = getAccess()
     const refresh = getRefresh()
-    // If access token is valid, we're good
     if (isTokenValid(access)) return true
-    // If access is expired but refresh is valid, we might be able to refresh
     if (isTokenValid(refresh)) return true
-    // Both tokens are invalid/expired, clear them
-    if (access || refresh) {
-      clearTokens()
-    }
+    if (access || refresh) clearTokens()
     return false
   })
+
+  const [userRole, setUserRole] = useState<string | null>(() => getUserFromToken(getAccess()).role)
+  const [userName, setUserName] = useState<string | null>(() => getUserFromToken(getAccess()).name)
 
   useEffect(() => {
     const onTokensChanged = () => {
@@ -80,6 +85,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.access) {
         setTokens(data.access, data.refresh)
         setIsAuthenticated(true)
+        const { role, name } = getUserFromToken(data.access)
+        setUserRole(role)
+        setUserName(name)
         scheduleRefreshFromAccess()
         return true
       }
@@ -97,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, userRole, userName, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

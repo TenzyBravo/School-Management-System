@@ -50,16 +50,27 @@ class SubjectSerializer(serializers.ModelSerializer):
 class TeacherAssignmentSerializer(serializers.ModelSerializer):
     teacher_name = serializers.SerializerMethodField()
     subject_name = serializers.CharField(source='subject.name', read_only=True)
+    subject_code = serializers.CharField(source='subject.code', read_only=True)
     grade_name = serializers.CharField(source='grade.name', read_only=True)
+    grade_level = serializers.IntegerField(source='grade.level', read_only=True)
     stream_name = serializers.CharField(source='stream.name', read_only=True)
+    student_count = serializers.SerializerMethodField()
 
     class Meta:
         model = TeacherAssignment
         fields = [
-            'id', 'teacher', 'teacher_name', 'grade', 'grade_name', 
-            'stream', 'stream_name', 'subject', 'subject_name', 
-            'academic_year', 'is_class_teacher'
+            'id', 'teacher', 'teacher_name', 'grade', 'grade_name', 'grade_level',
+            'stream', 'stream_name', 'subject', 'subject_name', 'subject_code',
+            'academic_year', 'is_class_teacher', 'student_count'
         ]
 
     def get_teacher_name(self, obj):
         return f"{obj.teacher.first_name} {obj.teacher.last_name}"
+
+    def get_student_count(self, obj):
+        from apps.students.models import Student
+        qs = Student.objects.filter(school=obj.school, current_class=obj.grade, is_active=True)
+        if obj.stream:
+            # stream is not on Student model, so count by grade only when stream present
+            pass
+        return qs.count()
