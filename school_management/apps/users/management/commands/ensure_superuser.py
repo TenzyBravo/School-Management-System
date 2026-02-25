@@ -37,6 +37,7 @@ class Command(BaseCommand):
                 user.is_staff = True
                 user.is_superuser = True
                 user.is_active = True
+                user.role = 'SUPER_ADMIN'
                 user.save()
                 self.stdout.write(
                     self.style.SUCCESS(f'Successfully updated superuser: {email}')
@@ -50,6 +51,8 @@ class Command(BaseCommand):
                     first_name=first_name,
                     last_name=last_name
                 )
+                user.role = 'SUPER_ADMIN'
+                user.save()
                 self.stdout.write(
                     self.style.SUCCESS(f'Successfully created superuser: {email}')
                 )

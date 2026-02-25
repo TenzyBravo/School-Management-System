@@ -81,7 +81,7 @@ class GradeViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         Return full school class hierarchy:
         Grade → Streams → {class_teacher, student_count}
         """
-        grades = self.get_queryset().prefetch_related('stream_set')
+        grades = self.get_queryset().prefetch_related('streams')
         # Fetch all class-teacher assignments for this school at once
         class_teachers = {}
         if request.user.school:
@@ -98,9 +98,11 @@ class GradeViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         # Count students per stream and per grade (for streams with no students assigned yet)
         stream_counts = {}
         grade_counts = {}
-        for student in Student.objects.filter(
-            school=request.user.school, is_active=True
-        ).values('current_class_id', 'current_stream_id'):
+        school = getattr(request.user, 'school', None)
+        student_qs = Student.objects.filter(is_active=True)
+        if school:
+            student_qs = student_qs.filter(school=school)
+        for student in student_qs.values('current_class_id', 'current_stream_id'):
             gid = str(student['current_class_id']) if student['current_class_id'] else None
             sid = str(student['current_stream_id']) if student['current_stream_id'] else None
             if sid:
@@ -111,7 +113,7 @@ class GradeViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         result = []
         for grade in grades:
             streams_data = []
-            for stream in grade.stream_set.all():
+            for stream in grade.streams.all():
                 sid = str(stream.id)
                 streams_data.append({
                     'id': sid,
