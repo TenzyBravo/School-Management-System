@@ -20,6 +20,17 @@ class StreamSerializer(serializers.ModelSerializer):
         model = Stream
         fields = ['id', 'grade', 'grade_name', 'name']
 
+    def validate(self, data):
+        grade = data.get('grade') or (self.instance.grade if self.instance else None)
+        name = data.get('name')
+        if grade and name:
+            qs = Stream.objects.filter(grade=grade, name=name)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError({'name': f'Stream "{name}" already exists in this grade.'})
+        return data
+
 class GradeSerializer(serializers.ModelSerializer):
     streams = StreamSerializer(many=True, read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
@@ -27,6 +38,19 @@ class GradeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Grade
         fields = ['id', 'name', 'level', 'category', 'category_display', 'streams']
+
+    def validate(self, data):
+        request = self.context.get('request')
+        if request and request.user:
+            school = getattr(request.user, 'school', None)
+            if school:
+                name = data.get('name')
+                qs = Grade.objects.filter(school=school, name=name)
+                if self.instance:
+                    qs = qs.exclude(pk=self.instance.pk)
+                if qs.exists():
+                    raise serializers.ValidationError({'name': f'A grade named "{name}" already exists for your school.'})
+        return data
 
 class SubjectSerializer(serializers.ModelSerializer):
     class Meta:
