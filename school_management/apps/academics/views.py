@@ -41,9 +41,14 @@ class GradeViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     permission_classes = [IsSchoolAdmin]
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'students']:
-            return [permissions.IsAuthenticated()]
-        return [IsSchoolAdmin()]
+        # Any authenticated user with a school can manage their school's grades
+        return [permissions.IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        serializer.save(school=self.request.user.school)
+
+    def perform_update(self, serializer):
+        serializer.save(school=self.request.user.school)
 
     @action(detail=True, methods=['get'], url_path='students')
     def students(self, request, pk=None):
@@ -51,11 +56,7 @@ class GradeViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         from apps.students.models import Student
         from apps.students.serializers import StudentSerializer
         grade = self.get_object()
-        stream_id = request.query_params.get('stream')
         qs = Student.objects.filter(school=request.user.school, current_class=grade, is_active=True)
-        if stream_id:
-            # Stream is not on Student, but keep the param for future use
-            pass
         serializer = StudentSerializer(qs.order_by('last_name', 'first_name'), many=True)
         return Response(serializer.data)
 
@@ -63,25 +64,27 @@ class GradeViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
 class StreamViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset = Stream.objects.all()
     serializer_class = StreamSerializer
-    permission_classes = [IsSchoolAdmin]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['grade']
 
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            return [permissions.IsAuthenticated()]
-        return [IsSchoolAdmin()]
+    def perform_create(self, serializer):
+        serializer.save(school=self.request.user.school)
+
+    def perform_update(self, serializer):
+        serializer.save(school=self.request.user.school)
 
 
 class SubjectViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset = Subject.objects.all()
     serializer_class = SubjectSerializer
-    permission_classes = [IsSchoolAdmin]
+    permission_classes = [permissions.IsAuthenticated]
 
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            return [permissions.IsAuthenticated()]
-        return [IsSchoolAdmin()]
+    def perform_create(self, serializer):
+        serializer.save(school=self.request.user.school)
+
+    def perform_update(self, serializer):
+        serializer.save(school=self.request.user.school)
 
 
 class TeacherAssignmentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
@@ -96,13 +99,14 @@ class TeacherAssignmentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
             return [permissions.IsAuthenticated()]
         return [IsSchoolAdmin()]
 
+    def perform_create(self, serializer):
+        serializer.save(school=self.request.user.school)
+
     @action(detail=False, methods=['get'], url_path='my-classes')
     def my_classes(self, request):
         """
-        Returns the current teacher's assignments for the active academic year,
-        grouped so the frontend can display class cards.
+        Returns the current teacher's assignments for the active academic year.
         """
-        # Get current (or most recent) academic year
         current_year = AcademicYear.objects.filter(is_current=True).first()
         if not current_year:
             current_year = AcademicYear.objects.order_by('-start_date').first()
