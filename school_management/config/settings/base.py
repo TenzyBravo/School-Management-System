@@ -27,8 +27,6 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_spectacular',
     'auditlog',
-    'cloudinary',
-    'cloudinary_storage',
 
     # Local apps
     'apps.core',
@@ -139,6 +137,7 @@ if CLOUDINARY_URL:
     import cloudinary
     cloudinary.config(cloudinary_url=CLOUDINARY_URL)
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    INSTALLED_APPS += ['cloudinary', 'cloudinary_storage']
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

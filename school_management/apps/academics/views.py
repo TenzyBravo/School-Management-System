@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from apps.core.permissions import IsHQUser, IsSchoolAdmin
 from apps.core.mixins import TenantViewSetMixin
@@ -9,6 +10,17 @@ from .serializers import (
     AcademicYearSerializer, TermSerializer, GradeSerializer,
     StreamSerializer, SubjectSerializer, TeacherAssignmentSerializer
 )
+
+
+def _get_school_or_error(request):
+    """Return the user's school, or raise 400 if not set."""
+    school = getattr(request.user, 'school', None)
+    if not school:
+        raise ValidationError(
+            "Your account is not linked to a school. "
+            "Contact your administrator to assign you to a school."
+        )
+    return school
 
 
 class AcademicYearViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
@@ -45,10 +57,10 @@ class GradeViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def perform_create(self, serializer):
-        serializer.save(school=self.request.user.school)
+        serializer.save(school=_get_school_or_error(self.request))
 
     def perform_update(self, serializer):
-        serializer.save(school=self.request.user.school)
+        serializer.save(school=_get_school_or_error(self.request))
 
     @action(detail=True, methods=['get'], url_path='students')
     def students(self, request, pk=None):
@@ -69,10 +81,10 @@ class StreamViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     filterset_fields = ['grade']
 
     def perform_create(self, serializer):
-        serializer.save(school=self.request.user.school)
+        serializer.save(school=_get_school_or_error(self.request))
 
     def perform_update(self, serializer):
-        serializer.save(school=self.request.user.school)
+        serializer.save(school=_get_school_or_error(self.request))
 
 
 class SubjectViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
@@ -81,10 +93,10 @@ class SubjectViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(school=self.request.user.school)
+        serializer.save(school=_get_school_or_error(self.request))
 
     def perform_update(self, serializer):
-        serializer.save(school=self.request.user.school)
+        serializer.save(school=_get_school_or_error(self.request))
 
 
 class TeacherAssignmentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
@@ -100,7 +112,7 @@ class TeacherAssignmentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         return [IsSchoolAdmin()]
 
     def perform_create(self, serializer):
-        serializer.save(school=self.request.user.school)
+        serializer.save(school=_get_school_or_error(self.request))
 
     @action(detail=False, methods=['get'], url_path='my-classes')
     def my_classes(self, request):
