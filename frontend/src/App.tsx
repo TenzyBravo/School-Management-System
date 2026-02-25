@@ -33,8 +33,8 @@ interface ClassCard {
 
 // Roles that see the class-centric home screen
 const CLASS_ROLES = ['TEACHER', 'HEADTEACHER', 'DEPUTY_HEAD', 'SOCIAL_OFFICER']
-// Roles that see the admin management dashboard
-const ADMIN_ROLES = ['ACADEMIC_MANAGER', 'HEAD_OF_OPS', 'DIRECTOR']
+// Roles that see the full admin management dashboard
+const ADMIN_ROLES = ['SUPER_ADMIN', 'ACADEMIC_MANAGER', 'HEAD_OF_OPS', 'DIRECTOR']
 
 function AppInner() {
   const { isAuthenticated, userRole, logout } = useAuth()

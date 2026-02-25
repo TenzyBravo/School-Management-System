@@ -9,6 +9,7 @@ from .models import User, UserRole
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import UserSerializer, ProfileSerializer, CustomTokenObtainPairSerializer
+from apps.core.permissions import IsSuperAdmin
 import csv
 import io
 import pandas as pd
@@ -49,14 +50,21 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
 class UserViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     """
-    ViewSet for managing users (teachers, staff, etc.)
+    ViewSet for managing users (teachers, staff, etc.).
+    Super admins can see and manage users across all schools.
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['role']
-    search_fields = ['first_name', 'last_name', 'email']
+    filterset_fields = ['role', 'school']
+    search_fields = ['first_name', 'last_name', 'email', 'employee_number']
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            # Only super admin or school admin can manage users
+            return [permissions.IsAuthenticated()]
+        return super().get_permissions()
 
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def bulk_upload(self, request):
