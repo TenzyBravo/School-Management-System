@@ -1,6 +1,26 @@
 import React, { useEffect, useState } from 'react'
 import { apiFetch } from '../lib/api'
 
+/** Parse DRF error responses robustly (handles arrays, objects, HTML bodies). */
+async function parseApiError(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.clone().text()
+    if (!body.trim() || body.trim().startsWith('<')) return `${fallback} (HTTP ${res.status})`
+    const err = JSON.parse(body)
+    if (Array.isArray(err)) return String(err[0] ?? fallback)
+    return (
+      err.detail ||
+      err.non_field_errors?.[0] ||
+      err.name?.[0] ||
+      err.message ||
+      Object.values(err).flat()[0] ||
+      fallback
+    )
+  } catch {
+    return `${fallback} (HTTP ${res.status})`
+  }
+}
+
 interface Stream {
   id: string
   name: string
@@ -65,6 +85,7 @@ export default function GradesManager() {
   const [grades, setGrades] = useState<Grade[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [noSchool, setNoSchool] = useState(false)
 
   // Add grade form
   const [gradeName, setGradeName] = useState('')
@@ -78,7 +99,14 @@ export default function GradesManager() {
   const [addingStream, setAddingStream] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  useEffect(() => { fetchGrades() }, [])
+  useEffect(() => {
+    fetchGrades()
+    // Check if the logged-in user has a school assigned
+    apiFetch('/api/v1/profile/')
+      .then(r => r.ok ? r.json() : null)
+      .then(profile => { if (profile && !profile.school) setNoSchool(true) })
+      .catch(() => {})
+  }, [])
 
   async function fetchGrades() {
     setLoading(true)
@@ -104,8 +132,8 @@ export default function GradesManager() {
         body: JSON.stringify({ name, level }),
       })
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.name?.[0] || err.detail || 'Failed to create grade')
+        const msg = await parseApiError(res, 'Failed to create grade')
+        throw new Error(msg)
       }
       setGradeName('')
       setGradeLevel('')
@@ -143,8 +171,8 @@ export default function GradesManager() {
         body: JSON.stringify({ name, grade: gradeId }),
       })
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.name?.[0] || err.detail || 'Failed to add stream')
+        const msg = await parseApiError(res, 'Failed to add stream')
+        throw new Error(msg)
       }
       setNewStreamName('')
       await fetchGrades()
@@ -194,6 +222,17 @@ export default function GradesManager() {
           {showCustomForm ? '✕ Cancel' : '+ Add Grade'}
         </button>
       </div>
+
+      {noSchool && (
+        <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', color: '#92400E', fontSize: '13px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '18px', flexShrink: 0 }}>⚠️</span>
+          <div>
+            <strong>Your account has no school assigned.</strong>{' '}
+            Grades are school-specific and cannot be created until your user account is linked to a school.
+            Ask your system administrator to assign a school to your account in the Django admin panel.
+          </div>
+        </div>
+      )}
 
       {error && (
         <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: '#DC2626', fontSize: '13px' }}>
