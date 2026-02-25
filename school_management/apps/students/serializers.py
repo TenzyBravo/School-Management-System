@@ -8,14 +8,17 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 
 class StudentSerializer(serializers.ModelSerializer):
     profile = StudentProfileSerializer(required=False)
-    
+    current_class_name = serializers.CharField(source='current_class.name', read_only=True)
+    current_stream_name = serializers.CharField(source='current_stream.name', read_only=True)
+
     class Meta:
         model = Student
         fields = [
             'id', 'first_name', 'last_name', 'middle_name',
             'child_id', 'admission_number', 'date_of_birth', 'gender',
-            'enrollment_date', 'current_class', 'is_active',
-            'profile', 'school', 'created_at', 'updated_at'
+            'enrollment_date', 'current_class', 'current_class_name',
+            'current_stream', 'current_stream_name',
+            'is_active', 'profile', 'school', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'school']
 

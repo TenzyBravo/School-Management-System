@@ -17,12 +17,17 @@ class Student(TenantAwareModel):
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     enrollment_date = models.DateField()
     
-    # We will link to Grade later to avoid circular imports if needed, 
-    # but for now we can import it since apps.academics exists.
     current_class = models.ForeignKey(
-        'academics.Grade', 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        'academics.Grade',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='students'
+    )
+    current_stream = models.ForeignKey(
+        'academics.Stream',
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
         related_name='students'
     )

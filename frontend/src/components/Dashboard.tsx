@@ -6,12 +6,13 @@ type DashboardProps = {
 }
 
 const ALL_CARDS = [
-  { id: 'schools',        title: 'Schools',    description: 'Manage schools, view details and performance', icon: '🏫', color: '#4F46E5', roles: ['SUPER_ADMIN'] },
-  { id: 'studentsmanager',title: 'Students',   description: 'Manage student records and bulk uploads',      icon: '👨‍🎓', color: '#059669', roles: ['SUPER_ADMIN', 'ACADEMIC_MANAGER', 'HEAD_OF_OPS', 'DIRECTOR', 'HEADTEACHER', 'DEPUTY_HEAD'] },
-  { id: 'faculty',        title: 'Faculty',    description: 'Manage teachers, staff and user accounts',     icon: '👩‍🏫', color: '#F59E0B', roles: ['SUPER_ADMIN', 'ACADEMIC_MANAGER', 'HEAD_OF_OPS', 'DIRECTOR', 'HEADTEACHER', 'DEPUTY_HEAD'] },
-  { id: 'students',       title: 'Attendance', description: 'Mark daily attendance and view statistics',    icon: '📋', color: '#10B981', roles: null }, // all roles
-  { id: 'academics',      title: 'Academics',  description: 'Manage curriculum, subjects and academic years',icon: '📚', color: '#DC2626', roles: ['SUPER_ADMIN', 'ACADEMIC_MANAGER', 'HEAD_OF_OPS', 'DIRECTOR', 'HEADTEACHER', 'DEPUTY_HEAD'] },
-  { id: 'reports',        title: 'Reports',    description: 'Generate performance reports and analytics',   icon: '📊', color: '#7C3AED', roles: null }, // all roles
+  { id: 'schools',        title: 'Schools',    description: 'Manage schools, view details and performance',         icon: '🏫', color: '#4F46E5', roles: ['SUPER_ADMIN'] },
+  { id: 'classes',        title: 'Classes',    description: 'View school class structure — grades, streams & students', icon: '🎓', color: '#0891B2', roles: ['SUPER_ADMIN', 'ACADEMIC_MANAGER', 'HEAD_OF_OPS', 'DIRECTOR', 'HEADTEACHER', 'DEPUTY_HEAD'] },
+  { id: 'studentsmanager',title: 'Students',   description: 'Manage student records and bulk uploads',              icon: '👨‍🎓', color: '#059669', roles: ['SUPER_ADMIN', 'ACADEMIC_MANAGER', 'HEAD_OF_OPS', 'DIRECTOR', 'HEADTEACHER', 'DEPUTY_HEAD'] },
+  { id: 'faculty',        title: 'Faculty',    description: 'Manage teachers, staff and user accounts',             icon: '👩‍🏫', color: '#F59E0B', roles: ['SUPER_ADMIN', 'ACADEMIC_MANAGER', 'HEAD_OF_OPS', 'DIRECTOR', 'HEADTEACHER', 'DEPUTY_HEAD'] },
+  { id: 'students',       title: 'Attendance', description: 'Mark daily attendance and view statistics',            icon: '📋', color: '#10B981', roles: null }, // all roles
+  { id: 'academics',      title: 'Academics',  description: 'Manage curriculum, subjects and academic years',       icon: '📚', color: '#DC2626', roles: ['SUPER_ADMIN', 'ACADEMIC_MANAGER', 'HEAD_OF_OPS', 'DIRECTOR', 'HEADTEACHER', 'DEPUTY_HEAD'] },
+  { id: 'reports',        title: 'Reports',    description: 'Generate performance reports and analytics',            icon: '📊', color: '#7C3AED', roles: null }, // all roles
 ]
 
 export default function Dashboard({ onNavigate }: DashboardProps) {

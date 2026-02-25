@@ -11,6 +11,7 @@ import MarksModule from './components/MarksModule'
 import ProfilePage from './components/ProfilePage'
 import ClassDashboard from './components/ClassDashboard'
 import ClassView from './components/ClassView'
+import SchoolClassesView from './components/SchoolClassesView'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { apiFetch } from './lib/api'
 
@@ -106,6 +107,7 @@ function AppInner() {
     faculty: 'Faculty & Staff',
     students: 'Attendance',
     academics: 'Academics',
+    classes: 'School Classes',
     reports: 'Marks & Reports',
     profile: 'My Profile',
   }
@@ -138,6 +140,7 @@ function AppInner() {
       {currentSection === 'faculty' && <UsersManager />}
       {currentSection === 'students' && <AttendanceModule />}
       {currentSection === 'academics' && <AcademicsManager />}
+      {currentSection === 'classes' && <SchoolClassesView onNavigate={setCurrentSection} />}
       {currentSection === 'reports' && <MarksModule />}
       {currentSection === 'profile' && <ProfilePage onSaved={refreshProfile} />}
     </PageShell>
