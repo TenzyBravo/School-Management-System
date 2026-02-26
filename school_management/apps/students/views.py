@@ -36,6 +36,27 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
             raise ValidationError("Your account is not linked to a school.")
         serializer.save(school=school)
 
+    @action(detail=False, methods=['get'])
+    def download_template(self, request):
+        """Return a CSV template with the correct column headers for bulk student upload."""
+        from django.http import HttpResponse
+        headers = [
+            'first_name', 'last_name', 'child_id', 'date_of_birth', 'gender',
+            'enrollment_date', 'admission_number',
+            'guardian_name', 'guardian_phone', 'guardian_email', 'address',
+        ]
+        sample = [
+            'Jane', 'Banda', 'CHL-0001', '2015-03-21', 'F',
+            '2024-01-15', 'ADM-001',
+            'Mary Banda', '0977123456', 'mary@example.com', '12 Kaunda Rd, Lusaka',
+        ]
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="students_template.csv"'
+        writer = csv.writer(response)
+        writer.writerow(headers)
+        writer.writerow(sample)
+        return response
+
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def bulk_upload(self, request):
         """
@@ -44,12 +65,12 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         Expected columns:
         - first_name (required)
         - last_name (required)
-        - child_id (required, unique) - Child ID/CHL
-        - date_of_birth (YYYY-MM-DD format)
-        - gender (M/F)
-        - admission_number (optional, for legacy data)
-        - email (optional)
-        - phone (optional)
+        - child_id (required, unique)
+        - date_of_birth (YYYY-MM-DD, optional)
+        - gender (M/F, optional)
+        - enrollment_date (YYYY-MM-DD, optional — defaults to today)
+        - admission_number (optional)
+        - guardian_name, guardian_phone, guardian_email, address (optional)
         - address (optional)
         """
         file_obj = request.FILES.get('file')
