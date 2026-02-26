@@ -12,6 +12,7 @@ import ProfilePage from './components/ProfilePage'
 import ClassDashboard from './components/ClassDashboard'
 import ClassView from './components/ClassView'
 import SchoolClassesView from './components/SchoolClassesView'
+import SchoolSwitcher from './components/SchoolSwitcher'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { apiFetch } from './lib/api'
 
@@ -83,6 +84,7 @@ function AppInner() {
         onProfileClick={() => setCurrentSection('profile')}
         onLogout={logout}
         showHome={false}
+        headerExtra={isAdminUser ? <SchoolSwitcher /> : undefined}
       >
         {activeClass ? (
           <ClassView
@@ -122,6 +124,7 @@ function AppInner() {
       showHome
       onHome={() => { setCurrentSection('home'); setActiveClass(null) }}
       noCard={currentSection === 'profile'}
+      headerExtra={isAdminUser ? <SchoolSwitcher /> : undefined}
     >
       {currentSection === 'schools' && (
         selectedSchool ? (
@@ -157,10 +160,11 @@ interface PageShellProps {
   showHome?: boolean
   onHome?: () => void
   noCard?: boolean
+  headerExtra?: React.ReactNode
   children: React.ReactNode
 }
 
-function PageShell({ title, userProfile, onProfileClick, onLogout, showHome, onHome, noCard, children }: PageShellProps) {
+function PageShell({ title, userProfile, onProfileClick, onLogout, showHome, onHome, noCard, headerExtra, children }: PageShellProps) {
   const initials = userProfile
     ? `${userProfile.first_name.charAt(0)}${userProfile.last_name.charAt(0)}`.toUpperCase()
     : '?'
@@ -186,6 +190,7 @@ function PageShell({ title, userProfile, onProfileClick, onLogout, showHome, onH
           </div>
 
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {headerExtra}
             <button
               onClick={onProfileClick}
               title="My Profile"

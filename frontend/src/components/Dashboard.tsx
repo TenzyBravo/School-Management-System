@@ -1,5 +1,6 @@
 import React from 'react'
 import { useAuth } from '../context/AuthContext'
+import SchoolSwitcher from './SchoolSwitcher'
 
 type DashboardProps = {
   onNavigate: (section: string) => void
@@ -19,6 +20,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const { logout, userRole, userName } = useAuth()
 
   const isSuperAdmin = userRole === 'SUPER_ADMIN'
+  const isHqUser = userRole && ['SUPER_ADMIN', 'ACADEMIC_MANAGER', 'HEAD_OF_OPS', 'DIRECTOR'].includes(userRole)
 
   const cards = ALL_CARDS.filter(c => c.roles === null || (userRole && c.roles.includes(userRole)))
 
@@ -79,11 +81,25 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <h2 style={{ color: 'white', fontSize: '28px', fontWeight: '600', marginBottom: '12px' }}>
             Welcome Back{userName ? `, ${userName}` : ''}! 👋
           </h2>
-          <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '16px', margin: 0 }}>
+          <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '16px', marginBottom: isHqUser ? '28px' : '0' }}>
             {isSuperAdmin
               ? 'You have full system access across all schools.'
               : 'Select a section below to get started'}
           </p>
+
+          {isHqUser && (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+            }}>
+              <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: '13px', fontWeight: '500', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                Active School Context
+              </span>
+              <SchoolSwitcher />
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12px' }}>
+                All data (students, grades, attendance) will be scoped to the selected school
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

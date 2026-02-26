@@ -6,12 +6,13 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import Student
 from .serializers import StudentSerializer
 from apps.core.context import get_current_school
+from apps.core.mixins import TenantViewSetMixin
 import csv
 import io
 import pandas as pd
 from datetime import datetime
 
-class StudentViewSet(viewsets.ModelViewSet):
+class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     serializer_class = StudentSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -20,24 +21,16 @@ class StudentViewSet(viewsets.ModelViewSet):
     ordering_fields = ['first_name', 'last_name', 'admission_number']
 
     def get_queryset(self):
-        # Filter by school is handled automatically if TenantAwareModel logic is perfect,
-        # but ModelViewSet needs explicit filtering usually if using a standard Manager
-        # unless our default manager already filters.
-        # Let's check TenantManager in core/managers.py later.
-        # Typically, a safe approach is:
         user = self.request.user
-        print(f"VIEW DEBUG: User: {user}, School: {getattr(user, 'school', None)}")
-        print(f"VIEW DEBUG: Context School: {get_current_school()}")
-        if not user.school:
-            if user.is_hq_user:
+        school = get_current_school() or getattr(user, 'school', None)
+        if not school:
+            if getattr(user, 'is_hq_user', False):
                 return Student.objects.all()
-            return Student.objects.none() # Should not happen
-        qs = Student.objects.filter(school=user.school)
-        print(f"VIEW DEBUG: Queryset Count: {qs.count()}")
-        return qs
+            return Student.objects.none()
+        return Student.objects.filter(school=school)
 
     def perform_create(self, serializer):
-        school = getattr(self.request.user, 'school', None)
+        school = get_current_school() or getattr(self.request.user, 'school', None)
         if not school:
             from rest_framework.exceptions import ValidationError
             raise ValidationError("Your account is not linked to a school.")
@@ -67,9 +60,10 @@ class StudentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if not request.user.school:
+        school = get_current_school() or getattr(request.user, 'school', None)
+        if not school:
             return Response(
-                {'error': 'User must be associated with a school'},
+                {'error': 'No active school context. Select a school first.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -115,7 +109,7 @@ class StudentViewSet(viewsets.ModelViewSet):
                     # Check for duplicates
                     if Student.objects.filter(
                         child_id=child_id,
-                        school=request.user.school
+                        school=school
                     ).exists():
                         skipped.append({
                             'row': idx,
@@ -159,7 +153,7 @@ class StudentViewSet(viewsets.ModelViewSet):
 
                     # Create student
                     student = Student.objects.create(
-                        school=request.user.school,
+                        school=school,
                         first_name=first_name,
                         last_name=last_name,
                         child_id=child_id,

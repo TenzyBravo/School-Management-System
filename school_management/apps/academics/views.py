@@ -13,8 +13,9 @@ from .serializers import (
 
 
 def _get_school_or_error(request):
-    """Return the user's school, or raise 400 if not set."""
-    school = getattr(request.user, 'school', None)
+    """Return the active school from context (supports SUPER_ADMIN switching), or raise 400."""
+    from apps.core.context import get_current_school
+    school = get_current_school() or getattr(request.user, 'school', None)
     if not school:
         raise ValidationError(
             "Your account is not linked to a school. "
