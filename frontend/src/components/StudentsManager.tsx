@@ -117,6 +117,7 @@ export default function StudentsManager() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [showBulkUpload, setShowBulkUpload] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -161,6 +162,35 @@ export default function StudentsManager() {
     })
   }
 
+  async function openEdit(student: Student) {
+    // Fetch full student record (includes profile)
+    setError(null)
+    try {
+      const res = await apiFetch(`/api/v1/students/${student.id}/`)
+      const data = await res.json()
+      setForm({
+        first_name: data.first_name ?? '',
+        last_name: data.last_name ?? '',
+        middle_name: data.middle_name ?? '',
+        child_id: data.child_id ?? '',
+        admission_number: data.admission_number ?? '',
+        date_of_birth: data.date_of_birth ?? '',
+        gender: data.gender ?? 'M',
+        enrollment_date: data.enrollment_date ?? new Date().toISOString().slice(0, 10),
+        current_class: data.current_class ?? '',
+        current_stream: data.current_stream ?? '',
+        guardian_name: data.profile?.guardian_name ?? '',
+        guardian_phone: data.profile?.guardian_phone ?? '',
+        guardian_email: data.profile?.guardian_email ?? '',
+        address: data.profile?.address ?? '',
+      })
+      setEditingId(student.id)
+      setShowForm(true)
+    } catch {
+      setError('Failed to load student details.')
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -189,17 +219,22 @@ export default function StudentsManager() {
       }
     }
 
+    const isEdit = Boolean(editingId)
+    const url = isEdit ? `/api/v1/students/${editingId}/` : '/api/v1/students/'
+    const method = isEdit ? 'PATCH' : 'POST'
+
     try {
-      const res = await apiFetch('/api/v1/students/', {
-        method: 'POST',
+      const res = await apiFetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
       if (!res.ok) {
-        const msg = await parseApiError(res, 'Failed to add student')
+        const msg = await parseApiError(res, isEdit ? 'Failed to update student' : 'Failed to add student')
         throw new Error(msg)
       }
       setForm(EMPTY_FORM)
+      setEditingId(null)
       setShowForm(false)
       await loadStudents()
     } catch (e: any) {
@@ -274,8 +309,8 @@ export default function StudentsManager() {
         }}>
           <div style={{ background: 'white', borderRadius: '12px', width: '100%', maxWidth: '620px', padding: '28px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#1F2937' }}>New Student</h3>
-              <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer', color: '#6B7280', lineHeight: 1 }}>×</button>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#1F2937' }}>{editingId ? 'Edit Student' : 'New Student'}</h3>
+              <button onClick={() => { setShowForm(false); setEditingId(null); setForm(EMPTY_FORM) }} style={{ background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer', color: '#6B7280', lineHeight: 1 }}>×</button>
             </div>
 
             {error && (
@@ -363,7 +398,7 @@ export default function StudentsManager() {
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
+                  onClick={() => { setShowForm(false); setEditingId(null); setForm(EMPTY_FORM) }}
                   style={{ padding: '10px 20px', background: 'white', border: '1px solid #D1D5DB', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', color: '#374151' }}
                 >
                   Cancel
@@ -373,7 +408,7 @@ export default function StudentsManager() {
                   disabled={saving}
                   style={{ padding: '10px 24px', background: '#4F46E5', color: 'white', border: 'none', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '600', opacity: saving ? 0.7 : 1 }}
                 >
-                  {saving ? 'Saving…' : 'Add Student'}
+                  {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add Student'}
                 </button>
               </div>
             </form>
@@ -413,6 +448,7 @@ export default function StudentsManager() {
                 <th style={th}>Date of Birth</th>
                 <th style={th}>Class / Stream</th>
                 <th style={th}>Status</th>
+                <th style={th}></th>
               </tr>
             </thead>
             <tbody>
@@ -441,6 +477,14 @@ export default function StudentsManager() {
                       }}
                     >
                       {student.is_active ? 'Active' : 'Inactive'}
+                    </button>
+                  </td>
+                  <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                    <button
+                      onClick={() => openEdit(student)}
+                      style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid #D1D5DB', background: 'white', color: '#374151', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}
+                    >
+                      Edit
                     </button>
                   </td>
                 </tr>
