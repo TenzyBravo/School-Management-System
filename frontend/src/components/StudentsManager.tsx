@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { apiFetch } from '../lib/api'
+import BulkUploadModal from './BulkUploadModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -115,6 +116,7 @@ export default function StudentsManager() {
   const [grades, setGrades] = useState<Grade[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [showBulkUpload, setShowBulkUpload] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -247,12 +249,20 @@ export default function StudentsManager() {
           </h3>
           <p style={{ fontSize: '14px', color: '#6B7280', margin: '2px 0 0' }}>Manage student enrolment</p>
         </div>
-        <button
-          onClick={() => { setShowForm(true); setError(null) }}
-          style={{ background: '#4F46E5', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}
-        >
-          + Add Student
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => setShowBulkUpload(true)}
+            style={{ background: '#059669', color: 'white', border: 'none', padding: '10px 18px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}
+          >
+            Bulk Upload
+          </button>
+          <button
+            onClick={() => { setShowForm(true); setError(null) }}
+            style={{ background: '#4F46E5', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}
+          >
+            + Add Student
+          </button>
+        </div>
       </div>
 
       {/* ── Add Student Modal ── */}
@@ -446,6 +456,15 @@ export default function StudentsManager() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Bulk Upload Modal */}
+      {showBulkUpload && (
+        <BulkUploadModal
+          type="students"
+          onClose={() => setShowBulkUpload(false)}
+          onSuccess={() => { loadStudents() }}
+        />
       )}
     </div>
   )
