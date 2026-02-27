@@ -112,185 +112,188 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Pre-scan: find child_ids that appear more than once in this file
+            from apps.schools.models import School as SchoolModel
+            from apps.academics.models import Grade, Stream
+            from .models import StudentProfile
+            from datetime import date as _date
+
+            # ── Pre-scan: intra-file duplicate child_ids ──────────────────
             child_id_counts = {}
             for r in rows:
                 cid = str(r.get('child_id', '')).strip()
                 if cid:
                     child_id_counts[cid] = child_id_counts.get(cid, 0) + 1
-            intra_file_duplicates = {cid for cid, count in child_id_counts.items() if count > 1}
-            seen_in_file = set()  # track first occurrence of each child_id in this upload
+            intra_file_duplicates = {cid for cid, n in child_id_counts.items() if n > 1}
+            seen_in_file = set()
 
-            # Process rows
+            # ── Pre-fetch lookups (6 queries total, not N*5) ──────────────
+            # 1. Schools by code (for rows with school_code column)
+            school_codes_in_file = {
+                str(r.get('school_code', '')).strip()
+                for r in rows
+                if str(r.get('school_code', '')).strip() not in ('', 'nan')
+            }
+            schools_by_code = {}
+            if school_codes_in_file and is_hq:
+                for s in SchoolModel.objects.filter(code__in=school_codes_in_file, is_active=True):
+                    schools_by_code[s.code] = s
+
+            # 2. All relevant schools
+            relevant_schools = set()
+            if school:
+                relevant_schools.add(school)
+            relevant_schools.update(schools_by_code.values())
+
+            # 3. Grades: (school_id, name_lower) → Grade
+            grades_map = {}
+            for g in Grade.objects.filter(school__in=relevant_schools):
+                grades_map[(g.school_id, g.name.lower())] = g
+
+            # 4. Streams: (grade_id, name_lower) → Stream
+            streams_map = {}
+            if grades_map:
+                for s in Stream.objects.filter(grade__in=grades_map.values()):
+                    streams_map[(s.grade_id, s.name.lower())] = s
+
+            # 5. Existing child_ids: set of (child_id, school_id) for O(1) lookup
+            existing_child_ids = set()
+            if relevant_schools:
+                existing_child_ids = set(
+                    Student.objects.filter(school__in=relevant_schools)
+                    .values_list('child_id', 'school_id')
+                )
+
+            # ── Validate & collect rows ───────────────────────────────────
             created = []
             errors = []
             skipped = []
+            students_to_create = []
+            profiles_to_create = []  # list of (student_index, profile_kwargs)
 
-            for idx, row in enumerate(rows, start=2):  # Start from 2 (row 1 is header)
-                try:
-                    # Required fields
-                    first_name = str(row.get('first_name', '')).strip()
-                    last_name = str(row.get('last_name', '')).strip()
-                    child_id = str(row.get('child_id', '')).strip()
+            for idx, row in enumerate(rows, start=2):
+                first_name = str(row.get('first_name', '')).strip()
+                last_name  = str(row.get('last_name',  '')).strip()
+                child_id   = str(row.get('child_id',   '')).strip()
 
-                    if not all([first_name, last_name, child_id]):
-                        errors.append({
-                            'row': idx,
-                            'error': 'Missing required fields (first_name, last_name, child_id)'
-                        })
-                        continue
+                if not all([first_name, last_name, child_id]):
+                    errors.append({'row': idx, 'error': 'Missing required fields (first_name, last_name, child_id)'})
+                    continue
 
-                    # Flag duplicate child_ids within this file
-                    if child_id in intra_file_duplicates:
-                        if child_id in seen_in_file:
-                            skipped.append({
-                                'row': idx,
-                                'child_id': child_id,
-                                'reason': f'Duplicate in file — child_id "{child_id}" appears more than once (only first row uploaded)'
-                            })
-                            continue
-                    seen_in_file.add(child_id)
+                # Intra-file duplicate
+                if child_id in intra_file_duplicates and child_id in seen_in_file:
+                    skipped.append({'row': idx, 'child_id': child_id,
+                                    'reason': f'Duplicate in file — "{child_id}" appears more than once (only first row used)'})
+                    continue
+                seen_in_file.add(child_id)
 
-                    # Per-row school resolution (HQ users can specify school_code per row)
-                    row_school = school
-                    school_code_str = str(row.get('school_code', '')).strip()
-                    if school_code_str and school_code_str != 'nan':
-                        if is_hq:
-                            from apps.schools.models import School as SchoolModel
-                            try:
-                                row_school = SchoolModel.objects.get(code=school_code_str, is_active=True)
-                            except SchoolModel.DoesNotExist:
-                                errors.append({
-                                    'row': idx,
-                                    'error': f'School with code "{school_code_str}" not found'
-                                })
-                                continue
-
-                    # If still no school resolved, require school_code for HQ users
+                # Resolve school
+                row_school = school
+                school_code_str = str(row.get('school_code', '')).strip()
+                if school_code_str and school_code_str != 'nan' and is_hq:
+                    row_school = schools_by_code.get(school_code_str)
                     if not row_school:
-                        errors.append({
-                            'row': idx,
-                            'error': 'No school context for this row. Add a school_code column or select a school first.'
-                        })
+                        errors.append({'row': idx, 'error': f'School with code "{school_code_str}" not found'})
                         continue
 
-                    # Check for duplicates against existing database records
-                    if Student.objects.filter(
-                        child_id=child_id,
-                        school=row_school
-                    ).exists():
-                        skipped.append({
-                            'row': idx,
-                            'child_id': child_id,
-                            'reason': f'Already exists in {row_school.name} — child_id "{child_id}" is already enrolled'
-                        })
+                if not row_school:
+                    errors.append({'row': idx, 'error': 'No school context. Add a school_code column or select a school first.'})
+                    continue
+
+                # Database duplicate (O(1) set lookup — no extra query)
+                if (child_id, row_school.id) in existing_child_ids:
+                    skipped.append({'row': idx, 'child_id': child_id,
+                                    'reason': f'Already exists in {row_school.name} — "{child_id}" is already enrolled'})
+                    continue
+
+                # date_of_birth
+                date_of_birth = None
+                dob_str = str(row.get('date_of_birth', '')).strip()
+                if dob_str and dob_str != 'nan':
+                    try:
+                        date_of_birth = datetime.strptime(dob_str, '%Y-%m-%d').date()
+                    except ValueError:
+                        errors.append({'row': idx, 'error': f'Invalid date_of_birth "{dob_str}". Use YYYY-MM-DD'})
+                        continue
+                if date_of_birth is None:
+                    errors.append({'row': idx, 'error': 'date_of_birth is required'})
+                    continue
+
+                # gender
+                gender = str(row.get('gender', '')).strip().upper() or 'M'
+                if gender not in ['M', 'F']:
+                    errors.append({'row': idx, 'error': f'Invalid gender "{gender}". Use M or F'})
+                    continue
+
+                # enrollment_date
+                enroll_str = str(row.get('enrollment_date', '')).strip()
+                try:
+                    enrollment_date = datetime.strptime(enroll_str, '%Y-%m-%d').date() if enroll_str and enroll_str != 'nan' else _date.today()
+                except ValueError:
+                    enrollment_date = _date.today()
+
+                # Resolve grade (O(1) map lookup)
+                current_class = None
+                grade_name_str = str(row.get('grade_name', '')).strip()
+                if grade_name_str and grade_name_str != 'nan':
+                    current_class = grades_map.get((row_school.id, grade_name_str.lower()))
+                    if not current_class:
+                        errors.append({'row': idx, 'error': f'Grade "{grade_name_str}" not found in {row_school.name}'})
                         continue
 
-                    # Optional fields
-                    date_of_birth = None
-                    dob_str = str(row.get('date_of_birth', '')).strip()
-                    if dob_str and dob_str != 'nan':
-                        try:
-                            date_of_birth = datetime.strptime(dob_str, '%Y-%m-%d').date()
-                        except ValueError:
-                            errors.append({
-                                'row': idx,
-                                'error': f'Invalid date format for date_of_birth: {dob_str}. Use YYYY-MM-DD'
-                            })
-                            continue
-
-                    gender = str(row.get('gender', '')).strip().upper()
-                    if gender and gender not in ['M', 'F']:
-                        errors.append({
-                            'row': idx,
-                            'error': f'Invalid gender: {gender}. Use M or F'
-                        })
+                # Resolve stream (O(1) map lookup)
+                current_stream = None
+                stream_name_str = str(row.get('stream_name', '')).strip()
+                if stream_name_str and stream_name_str != 'nan':
+                    if not current_class:
+                        errors.append({'row': idx, 'error': f'stream_name "{stream_name_str}" given but grade_name is missing'})
+                        continue
+                    current_stream = streams_map.get((current_class.id, stream_name_str.lower()))
+                    if not current_stream:
+                        errors.append({'row': idx, 'error': f'Stream "{stream_name_str}" not found in grade "{grade_name_str}"'})
                         continue
 
-                    # enrollment_date: use column or today
-                    enroll_str = str(row.get('enrollment_date', '')).strip()
-                    if enroll_str and enroll_str != 'nan':
-                        try:
-                            enrollment_date = datetime.strptime(enroll_str, '%Y-%m-%d').date()
-                        except ValueError:
-                            from datetime import date as _date
-                            enrollment_date = _date.today()
-                    else:
-                        from datetime import date as _date
-                        enrollment_date = _date.today()
+                # Queue for bulk insert
+                students_to_create.append(Student(
+                    school=row_school,
+                    first_name=first_name,
+                    last_name=last_name,
+                    child_id=child_id,
+                    admission_number=str(row.get('admission_number', '')).strip() or None,
+                    date_of_birth=date_of_birth,
+                    gender=gender,
+                    enrollment_date=enrollment_date,
+                    current_class=current_class,
+                    current_stream=current_stream,
+                ))
+                guardian_name  = str(row.get('guardian_name',  '')).strip()
+                guardian_phone = str(row.get('guardian_phone', '')).strip()
+                if guardian_name and guardian_phone:
+                    profiles_to_create.append({
+                        'idx': len(students_to_create) - 1,
+                        'guardian_name':  guardian_name,
+                        'guardian_phone': guardian_phone,
+                        'guardian_email': str(row.get('guardian_email', '')).strip() or None,
+                        'address':        str(row.get('address', '')).strip() or '',
+                    })
 
-                    # Resolve grade (current_class)
-                    current_class = None
-                    grade_name_str = str(row.get('grade_name', '')).strip()
-                    if grade_name_str and grade_name_str != 'nan':
-                        from apps.academics.models import Grade, Stream
-                        try:
-                            current_class = Grade.objects.get(school=row_school, name__iexact=grade_name_str)
-                        except Grade.DoesNotExist:
-                            errors.append({
-                                'row': idx,
-                                'error': f'Grade "{grade_name_str}" not found in school "{row_school.name}"'
-                            })
-                            continue
+                created.append({'row': idx, 'child_id': child_id, 'name': f'{first_name} {last_name}'})
+                # Add to set so later rows in this file don't create a DB duplicate
+                existing_child_ids.add((child_id, row_school.id))
 
-                    # Resolve stream (current_stream)
-                    current_stream = None
-                    stream_name_str = str(row.get('stream_name', '')).strip()
-                    if stream_name_str and stream_name_str != 'nan':
-                        if current_class is None:
-                            errors.append({
-                                'row': idx,
-                                'error': f'stream_name "{stream_name_str}" given but grade_name is missing'
-                            })
-                            continue
-                        from apps.academics.models import Stream
-                        try:
-                            current_stream = Stream.objects.get(grade=current_class, name__iexact=stream_name_str)
-                        except Stream.DoesNotExist:
-                            errors.append({
-                                'row': idx,
-                                'error': f'Stream "{stream_name_str}" not found in grade "{grade_name_str}"'
-                            })
-                            continue
-
-                    # Create student
-                    student = Student.objects.create(
-                        school=row_school,
-                        first_name=first_name,
-                        last_name=last_name,
-                        child_id=child_id,
-                        admission_number=str(row.get('admission_number', '')).strip() or None,
-                        date_of_birth=date_of_birth,
-                        gender=gender if gender else 'M',
-                        enrollment_date=enrollment_date,
-                        current_class=current_class,
-                        current_stream=current_stream,
-                    )
-
-                    # Create guardian profile if provided
-                    guardian_name = str(row.get('guardian_name', '')).strip()
-                    guardian_phone = str(row.get('guardian_phone', '')).strip()
-                    if guardian_name and guardian_phone:
-                        from .models import StudentProfile
-                        StudentProfile.objects.create(
-                            student=student,
-                            guardian_name=guardian_name,
-                            guardian_phone=guardian_phone,
-                            guardian_email=str(row.get('guardian_email', '')).strip() or None,
-                            address=str(row.get('address', '')).strip() or '',
+            # ── Bulk insert (2 queries) ───────────────────────────────────
+            if students_to_create:
+                inserted = Student.objects.bulk_create(students_to_create)
+                if profiles_to_create:
+                    StudentProfile.objects.bulk_create([
+                        StudentProfile(
+                            student=inserted[p['idx']],
+                            guardian_name=p['guardian_name'],
+                            guardian_phone=p['guardian_phone'],
+                            guardian_email=p['guardian_email'],
+                            address=p['address'],
                         )
-
-                    created.append({
-                        'row': idx,
-                        'child_id': child_id,
-                        'name': f'{first_name} {last_name}'
-                    })
-
-                except Exception as e:
-                    errors.append({
-                        'row': idx,
-                        'error': str(e)
-                    })
+                        for p in profiles_to_create
+                    ])
 
             file_duplicates = [s for s in skipped if 'Duplicate in file' in s.get('reason', '')]
             db_duplicates = [s for s in skipped if 'Already exists' in s.get('reason', '')]
