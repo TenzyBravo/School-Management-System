@@ -43,11 +43,13 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         headers = [
             'first_name', 'last_name', 'child_id', 'date_of_birth', 'gender',
             'enrollment_date', 'admission_number',
+            'school_code', 'grade_name', 'stream_name',
             'guardian_name', 'guardian_phone', 'guardian_email', 'address',
         ]
         sample = [
             'Jane', 'Banda', 'CHL-0001', '2015-03-21', 'F',
             '2024-01-15', 'ADM-001',
+            'BLA', 'Grade 1', 'Cheetah',
             'Mary Banda', '0977123456', 'mary@example.com', '12 Kaunda Rd, Lusaka',
         ]
         response = HttpResponse(content_type='text/csv')
@@ -127,10 +129,25 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                         })
                         continue
 
-                    # Check for duplicates
+                    # Per-row school resolution (HQ users can specify school_code per row)
+                    row_school = school
+                    school_code_str = str(row.get('school_code', '')).strip()
+                    if school_code_str and school_code_str != 'nan':
+                        if getattr(request.user, 'is_hq_user', False) or getattr(request.user, 'is_superuser', False):
+                            from apps.schools.models import School as SchoolModel
+                            try:
+                                row_school = SchoolModel.objects.get(code=school_code_str, is_active=True)
+                            except SchoolModel.DoesNotExist:
+                                errors.append({
+                                    'row': idx,
+                                    'error': f'School with code "{school_code_str}" not found'
+                                })
+                                continue
+
+                    # Check for duplicates within resolved school
                     if Student.objects.filter(
                         child_id=child_id,
-                        school=school
+                        school=row_school
                     ).exists():
                         skipped.append({
                             'row': idx,
@@ -172,9 +189,43 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                         from datetime import date as _date
                         enrollment_date = _date.today()
 
+                    # Resolve grade (current_class)
+                    current_class = None
+                    grade_name_str = str(row.get('grade_name', '')).strip()
+                    if grade_name_str and grade_name_str != 'nan':
+                        from apps.academics.models import Grade, Stream
+                        try:
+                            current_class = Grade.objects.get(school=row_school, name__iexact=grade_name_str)
+                        except Grade.DoesNotExist:
+                            errors.append({
+                                'row': idx,
+                                'error': f'Grade "{grade_name_str}" not found in school "{row_school.name}"'
+                            })
+                            continue
+
+                    # Resolve stream (current_stream)
+                    current_stream = None
+                    stream_name_str = str(row.get('stream_name', '')).strip()
+                    if stream_name_str and stream_name_str != 'nan':
+                        if current_class is None:
+                            errors.append({
+                                'row': idx,
+                                'error': f'stream_name "{stream_name_str}" given but grade_name is missing'
+                            })
+                            continue
+                        from apps.academics.models import Stream
+                        try:
+                            current_stream = Stream.objects.get(grade=current_class, name__iexact=stream_name_str)
+                        except Stream.DoesNotExist:
+                            errors.append({
+                                'row': idx,
+                                'error': f'Stream "{stream_name_str}" not found in grade "{grade_name_str}"'
+                            })
+                            continue
+
                     # Create student
                     student = Student.objects.create(
-                        school=school,
+                        school=row_school,
                         first_name=first_name,
                         last_name=last_name,
                         child_id=child_id,
@@ -182,6 +233,8 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                         date_of_birth=date_of_birth,
                         gender=gender if gender else 'M',
                         enrollment_date=enrollment_date,
+                        current_class=current_class,
+                        current_stream=current_stream,
                     )
 
                     # Create guardian profile if provided
@@ -227,24 +280,3 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    @action(detail=False, methods=['get'])
-    def download_template(self, request):
-        """Download CSV template for bulk upload"""
-        response = Response(
-            content_type='text/csv',
-            headers={'Content-Disposition': 'attachment; filename="students_template.csv"'}
-        )
-
-        writer = csv.writer(response)
-        writer.writerow([
-            'first_name', 'last_name', 'child_id', 'date_of_birth',
-            'gender', 'enrollment_date', 'admission_number',
-            'guardian_name', 'guardian_phone', 'guardian_email', 'address'
-        ])
-        writer.writerow([
-            'John', 'Doe', 'CHL001', '2010-05-15', 'M',
-            '2024-01-15', 'STU001',
-            'Jane Doe', '+260971234567', 'jane@example.com', '123 Main St'
-        ])
-
-        return response 
