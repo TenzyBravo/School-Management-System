@@ -84,11 +84,13 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
             )
 
         school = get_current_school() or getattr(request.user, 'school', None)
-        if not school:
+        is_hq = getattr(request.user, 'is_hq_user', False) or getattr(request.user, 'is_superuser', False)
+        if not school and not is_hq:
             return Response(
                 {'error': 'No active school context. Select a school first.'},
                 status=status.HTTP_403_FORBIDDEN
             )
+        # HQ/SUPER_ADMIN with no context: school is None, each row must supply school_code
 
         # Determine file type and parse accordingly
         file_name = file_obj.name.lower()
@@ -133,7 +135,7 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                     row_school = school
                     school_code_str = str(row.get('school_code', '')).strip()
                     if school_code_str and school_code_str != 'nan':
-                        if getattr(request.user, 'is_hq_user', False) or getattr(request.user, 'is_superuser', False):
+                        if is_hq:
                             from apps.schools.models import School as SchoolModel
                             try:
                                 row_school = SchoolModel.objects.get(code=school_code_str, is_active=True)
@@ -143,6 +145,14 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                                     'error': f'School with code "{school_code_str}" not found'
                                 })
                                 continue
+
+                    # If still no school resolved, require school_code for HQ users
+                    if not row_school:
+                        errors.append({
+                            'row': idx,
+                            'error': 'No school context for this row. Add a school_code column or select a school first.'
+                        })
+                        continue
 
                     # Check for duplicates within resolved school
                     if Student.objects.filter(
