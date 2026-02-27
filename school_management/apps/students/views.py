@@ -112,6 +112,15 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
+            # Pre-scan: find child_ids that appear more than once in this file
+            child_id_counts = {}
+            for r in rows:
+                cid = str(r.get('child_id', '')).strip()
+                if cid:
+                    child_id_counts[cid] = child_id_counts.get(cid, 0) + 1
+            intra_file_duplicates = {cid for cid, count in child_id_counts.items() if count > 1}
+            seen_in_file = set()  # track first occurrence of each child_id in this upload
+
             # Process rows
             created = []
             errors = []
@@ -130,6 +139,17 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                             'error': 'Missing required fields (first_name, last_name, child_id)'
                         })
                         continue
+
+                    # Flag duplicate child_ids within this file
+                    if child_id in intra_file_duplicates:
+                        if child_id in seen_in_file:
+                            skipped.append({
+                                'row': idx,
+                                'child_id': child_id,
+                                'reason': f'Duplicate in file — child_id "{child_id}" appears more than once (only first row uploaded)'
+                            })
+                            continue
+                    seen_in_file.add(child_id)
 
                     # Per-row school resolution (HQ users can specify school_code per row)
                     row_school = school
@@ -154,7 +174,7 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                         })
                         continue
 
-                    # Check for duplicates within resolved school
+                    # Check for duplicates against existing database records
                     if Student.objects.filter(
                         child_id=child_id,
                         school=row_school
@@ -162,7 +182,7 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                         skipped.append({
                             'row': idx,
                             'child_id': child_id,
-                            'reason': 'Student with this Child ID already exists'
+                            'reason': f'Already exists in {row_school.name} — child_id "{child_id}" is already enrolled'
                         })
                         continue
 
@@ -272,8 +292,18 @@ class StudentViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                         'error': str(e)
                     })
 
+            file_duplicates = [s for s in skipped if 'Duplicate in file' in s.get('reason', '')]
+            db_duplicates = [s for s in skipped if 'Already exists' in s.get('reason', '')]
+            summary = f'Imported {len(created)} students'
+            if file_duplicates:
+                summary += f', {len(file_duplicates)} duplicate(s) in file skipped'
+            if db_duplicates:
+                summary += f', {len(db_duplicates)} already enrolled skipped'
+            if errors:
+                summary += f', {len(errors)} error(s)'
+
             return Response({
-                'message': f'Successfully imported {len(created)} students',
+                'message': summary,
                 'created': len(created),
                 'errors': len(errors),
                 'skipped': len(skipped),
