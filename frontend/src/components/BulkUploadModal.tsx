@@ -56,7 +56,7 @@ export default function BulkUploadModal({ type, onClose, onSuccess }: Props) {
           }, 2000)
         }
       } else {
-        alert(`Upload failed: ${data.error || 'Unknown error'}`)
+        alert(`Upload failed: ${data.error || data.detail || JSON.stringify(data)}`)
       }
     } catch (error) {
       console.error('Upload error:', error)

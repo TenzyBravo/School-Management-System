@@ -113,7 +113,10 @@ export async function apiFetch(input: RequestInfo, init: RequestInit = {}): Prom
 
   const makeHeaders = (h?: HeadersInit) => {
     const headers = new Headers(h || {})
-    headers.set('Content-Type', 'application/json')
+    // Don't set Content-Type for FormData — browser must set it with the multipart boundary
+    if (!(init.body instanceof FormData)) {
+      headers.set('Content-Type', 'application/json')
+    }
     if (access) headers.set('Authorization', `Bearer ${access}`)
     const activeSchoolId = localStorage.getItem('activeSchoolId')
     if (activeSchoolId) headers.set('X-Active-School', activeSchoolId)
