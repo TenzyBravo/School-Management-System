@@ -8,7 +8,7 @@ type School = {
 }
 
 type SchoolsListProps = {
-  onSelectSchool?: (id: string) => void
+  onSelectSchool?: (id: string, name: string) => void
 }
 
 export default function SchoolsList({ onSelectSchool }: SchoolsListProps) {
@@ -36,7 +36,7 @@ export default function SchoolsList({ onSelectSchool }: SchoolsListProps) {
         {schools.map((s) => (
           <div
             key={s.id}
-            onClick={() => onSelectSchool && onSelectSchool(s.id)}
+            onClick={() => onSelectSchool && onSelectSchool(s.id, s.name)}
             style={{
               padding: '20px',
               border: '1px solid #E5E7EB',

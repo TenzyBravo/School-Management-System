@@ -23,4 +23,3 @@ class Attendance(TenantAwareModel):
 
 	def __str__(self):
 		return f"Attendance: {self.student} - {self.date} - {self.get_status_display()}"
-

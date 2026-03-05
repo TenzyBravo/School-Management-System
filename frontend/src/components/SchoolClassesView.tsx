@@ -44,6 +44,7 @@ interface Student {
 
 interface Props {
   onNavigate: (section: string) => void
+  onBack?: () => void
 }
 
 // ─── Colour palette ──────────────────────────────────────────────────────────
@@ -54,7 +55,7 @@ const GRADE_COLORS = [
   '#0D9488', '#9333EA', '#EA580C', '#16A34A',
 ]
 
-export default function SchoolClassesView({ onNavigate }: Props) {
+export default function SchoolClassesView({ onNavigate, onBack }: Props) {
   const [grades, setGrades] = useState<GradeInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -178,6 +179,20 @@ export default function SchoolClassesView({ onNavigate }: Props) {
 
   return (
     <div>
+      {/* Back to schools button (only when drilling in from Schools section) */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          style={{
+            background: '#F3F4F6', border: '1px solid #E5E7EB',
+            padding: '8px 16px', borderRadius: '6px', cursor: 'pointer',
+            marginBottom: '20px', fontSize: '14px',
+          }}
+        >
+          ← Back to schools
+        </button>
+      )}
+
       {/* Summary bar */}
       <div style={{ display: 'flex', gap: '16px', marginBottom: '28px', flexWrap: 'wrap' }}>
         {[

@@ -32,6 +32,9 @@ class AttendanceViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         if not records:
             return Response({'error': 'No records provided.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        from apps.core.context import get_current_school
+        school = get_current_school() or getattr(request.user, 'school', None)
+
         created, updated = 0, 0
         errors = []
 
@@ -50,7 +53,7 @@ class AttendanceViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
                 defaults={
                     'status': att_status,
                     'marked_by': request.user,
-                    'school': request.user.school,
+                    'school': school,
                 }
             )
             if was_created:

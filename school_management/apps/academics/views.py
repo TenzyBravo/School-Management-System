@@ -68,8 +68,12 @@ class GradeViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         """Return all active students enrolled in this grade (optionally filtered by stream)."""
         from apps.students.models import Student
         from apps.students.serializers import StudentSerializer
+        from apps.core.context import get_current_school
         grade = self.get_object()
-        qs = Student.objects.filter(school=request.user.school, current_class=grade, is_active=True)
+        school = get_current_school() or getattr(request.user, 'school', None)
+        qs = Student.objects.filter(current_class=grade, is_active=True)
+        if school:
+            qs = qs.filter(school=school)
         stream_id = request.query_params.get('stream')
         if stream_id:
             qs = qs.filter(current_stream_id=stream_id)
@@ -82,12 +86,15 @@ class GradeViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         Return full school class hierarchy:
         Grade → Streams → {class_teacher, student_count}
         """
+        from apps.core.context import get_current_school
+        school = get_current_school() or getattr(request.user, 'school', None)
+
         grades = self.get_queryset().prefetch_related('streams')
         # Fetch all class-teacher assignments for this school at once
         class_teachers = {}
-        if request.user.school:
+        if school:
             for assignment in TeacherAssignment.objects.filter(
-                school=request.user.school, is_class_teacher=True
+                school=school, is_class_teacher=True
             ).select_related('teacher', 'stream'):
                 if assignment.stream_id:
                     class_teachers[str(assignment.stream_id)] = {
@@ -99,7 +106,6 @@ class GradeViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         # Count students per stream and per grade (for streams with no students assigned yet)
         stream_counts = {}
         grade_counts = {}
-        school = getattr(request.user, 'school', None)
         student_qs = Student.objects.filter(is_active=True)
         if school:
             student_qs = student_qs.filter(school=school)

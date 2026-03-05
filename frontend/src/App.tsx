@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import SchoolsList from './components/SchoolsList'
 import Login from './components/Login'
 import Dashboard from './components/Dashboard'
-import StudentsPage from './components/StudentsPage'
 import StudentsManager from './components/StudentsManager'
 import UsersManager from './components/UsersManager'
 import AcademicsManager from './components/AcademicsManager'
@@ -42,6 +41,8 @@ function AppInner() {
   const { isAuthenticated, userRole, logout } = useAuth()
   const [currentSection, setCurrentSection] = useState<string>('home')
   const [selectedSchool, setSelectedSchool] = useState<string | null>(null)
+  const [selectedSchoolName, setSelectedSchoolName] = useState<string | null>(null)
+  const [prevActiveSchoolId, setPrevActiveSchoolId] = useState<string | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [activeClass, setActiveClass] = useState<ClassCard | null>(null)
 
@@ -104,7 +105,7 @@ function AppInner() {
 
   // ── INNER SECTIONS ──
   const sectionTitles: Record<string, string> = {
-    schools: 'Schools',
+    schools: selectedSchool && selectedSchoolName ? selectedSchoolName : 'Schools',
     studentsmanager: 'Students Management',
     faculty: 'Faculty & Staff',
     students: 'Attendance',
@@ -128,15 +129,26 @@ function AppInner() {
     >
       {currentSection === 'schools' && (
         selectedSchool ? (
-          <div>
-            <button onClick={() => setSelectedSchool(null)} style={{
-              background: '#F3F4F6', border: '1px solid #E5E7EB',
-              padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', marginBottom: '20px'
-            }}>← Back to schools</button>
-            <StudentsPage schoolId={selectedSchool} />
-          </div>
+          <SchoolClassesView
+            onNavigate={setCurrentSection}
+            onBack={() => {
+              if (prevActiveSchoolId) {
+                localStorage.setItem('activeSchoolId', prevActiveSchoolId)
+              } else {
+                localStorage.removeItem('activeSchoolId')
+              }
+              setSelectedSchool(null)
+              setSelectedSchoolName(null)
+              setPrevActiveSchoolId(null)
+            }}
+          />
         ) : (
-          <SchoolsList onSelectSchool={(id: string) => setSelectedSchool(id)} />
+          <SchoolsList onSelectSchool={(id: string, name: string) => {
+            setPrevActiveSchoolId(localStorage.getItem('activeSchoolId'))
+            localStorage.setItem('activeSchoolId', id)
+            setSelectedSchool(id)
+            setSelectedSchoolName(name)
+          }} />
         )
       )}
       {currentSection === 'studentsmanager' && <StudentsManager />}
