@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import AcademicYear, Term, Grade, Stream, Subject, TeacherAssignment
+from .models import Classroom
 
 @admin.register(AcademicYear)
 class AcademicYearAdmin(admin.ModelAdmin):
@@ -29,3 +30,9 @@ class SubjectAdmin(admin.ModelAdmin):
 class TeacherAssignmentAdmin(admin.ModelAdmin):
     list_display = ('teacher', 'subject', 'grade', 'stream', 'academic_year')
     list_filter = ('grade', 'academic_year')
+
+
+@admin.register(Classroom)
+class ClassroomAdmin(admin.ModelAdmin):
+    list_display = ('name', 'grade', 'school', 'teacher', 'capacity')
+    list_filter = ('school', 'grade')

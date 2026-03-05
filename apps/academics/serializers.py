@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import AcademicYear, Term, Grade, Stream, Subject, TeacherAssignment
+from .models import Classroom
 
 class TermSerializer(serializers.ModelSerializer):
     class Meta:
@@ -20,12 +21,27 @@ class StreamSerializer(serializers.ModelSerializer):
         model = Stream
         fields = ['id', 'grade', 'grade_name', 'name']
 
+
+class ClassroomSerializer(serializers.ModelSerializer):
+    grade_name = serializers.CharField(source='grade.name', read_only=True)
+    teacher_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Classroom
+        fields = ['id', 'grade', 'grade_name', 'name', 'teacher', 'teacher_name', 'capacity']
+
+    def get_teacher_name(self, obj):
+        if obj.teacher:
+            return f"{obj.teacher.first_name} {obj.teacher.last_name}"
+        return None
+
 class GradeSerializer(serializers.ModelSerializer):
     streams = StreamSerializer(many=True, read_only=True)
+    classrooms = ClassroomSerializer(many=True, read_only=True)
 
     class Meta:
         model = Grade
-        fields = ['id', 'name', 'level', 'streams']
+        fields = ['id', 'name', 'level', 'streams', 'classrooms']
 
 class SubjectSerializer(serializers.ModelSerializer):
     class Meta:
@@ -59,3 +75,17 @@ class TeacherAssignmentSerializer(serializers.ModelSerializer):
 
     def get_teacher_name(self, obj):
         return f"{obj.teacher.first_name} {obj.teacher.last_name}"
+
+
+class ClassroomSerializer(serializers.ModelSerializer):
+    grade_name = serializers.CharField(source='grade.name', read_only=True)
+    teacher_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Classroom
+        fields = ['id', 'grade', 'grade_name', 'name', 'teacher', 'teacher_name', 'capacity']
+
+    def get_teacher_name(self, obj):
+        if obj.teacher:
+            return f"{obj.teacher.first_name} {obj.teacher.last_name}"
+        return None

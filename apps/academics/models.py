@@ -83,3 +83,21 @@ class TeacherAssignment(TenantAwareModel):
 
     def __str__(self):
         return f"{self.teacher} - {self.subject} ({self.grade})"
+
+
+class Classroom(TenantAwareModel):
+    """Represents a class/stream instance under a Grade for a specific school.
+    Example: Grade 1 -> '1-A', '1-B'
+    """
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='classrooms')
+    name = models.CharField(max_length=50)  # e.g., '1-A' or 'Form 1A'
+    teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+                                null=True, blank=True, related_name='classrooms')
+    capacity = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('grade', 'name')
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.grade.name} - {self.name}"
