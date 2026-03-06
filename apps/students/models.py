@@ -16,14 +16,34 @@ class Student(TenantAwareModel):
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     enrollment_date = models.DateField()
     
-    # We will link to Grade later to avoid circular imports if needed, 
-    # but for now we can import it since apps.academics exists.
+    # We will link to Grade and to Classroom/Stream for FLMZ structure.
+    # Keep the existing current_class (Grade) for backward compatibility,
+    # and add explicit classroom and stream foreign keys which are used
+    # by attendance/reporting features.
     current_class = models.ForeignKey(
-        'academics.Grade', 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        'academics.Grade',
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
         related_name='students'
+    )
+
+    # Specific classroom instance (e.g., 'Grade 1 - A')
+    classroom = models.ForeignKey(
+        'academics.Classroom',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='students'
+    )
+
+    # Stream (optional subdivision within a grade/class)
+    stream = models.ForeignKey(
+        'academics.Stream',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='students_stream'
     )
     
     is_active = models.BooleanField(default=True)
