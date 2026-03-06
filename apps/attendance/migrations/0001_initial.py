@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ('schools', '0001_initial'),
-        ('students', '0002_alter_student_unique_together_student_child_id_and_more'),
+        ('students', '0002_student_classroom_student_stream'),
     ]
 
     operations = [
