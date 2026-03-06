@@ -29,8 +29,10 @@ class AttendanceViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         Payload: { "records": [{"student": "<id>", "date": "YYYY-MM-DD", "status": "P|A|L|E"}, ...] }
         """
         records = request.data.get('records', [])
-        if not records:
-            return Response({'error': 'No records provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        classroom_id = request.data.get('classroom')
+        stream_id = request.data.get('stream')
+        date = request.data.get('date')
+        default_status = request.data.get('status', 'P')
 
         from apps.core.context import get_current_school
         school = get_current_school() or getattr(request.user, 'school', None)
@@ -38,28 +40,46 @@ class AttendanceViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         created, updated = 0, 0
         errors = []
 
+        # If no explicit records provided but classroom/stream + date exist,
+        # generate records for all students in that classroom/stream.
+        if not records and (classroom_id or stream_id) and date:
+            from apps.students.models import Student
+            qs = Student.objects.filter(school=school)
+            if classroom_id:
+                qs = qs.filter(classroom_id=classroom_id)
+            if stream_id:
+                qs = qs.filter(stream_id=stream_id)
+            # Build records list from students queryset
+            records = [{'student': str(s.id), 'date': date, 'status': default_status} for s in qs]
+
+        if not records:
+            return Response({'error': 'No records provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
         for rec in records:
             student_id = rec.get('student')
-            date = rec.get('date')
-            att_status = rec.get('status', 'P')
+            rec_date = rec.get('date')
+            att_status = rec.get('status', default_status)
 
-            if not student_id or not date:
+            if not student_id or not rec_date:
                 errors.append({'record': rec, 'error': 'Missing student or date'})
                 continue
 
-            obj, was_created = Attendance.objects.update_or_create(
-                student_id=student_id,
-                date=date,
-                defaults={
-                    'status': att_status,
-                    'marked_by': request.user,
-                    'school': school,
-                }
-            )
-            if was_created:
-                created += 1
-            else:
-                updated += 1
+            try:
+                obj, was_created = Attendance.objects.update_or_create(
+                    student_id=student_id,
+                    date=rec_date,
+                    defaults={
+                        'status': att_status,
+                        'marked_by': request.user,
+                        'school': school,
+                    }
+                )
+                if was_created:
+                    created += 1
+                else:
+                    updated += 1
+            except Exception as e:
+                errors.append({'record': rec, 'error': str(e)})
 
         return Response({
             'created': created,
