@@ -1,6 +1,8 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from apps.core.models import TenantAwareModel
 import uuid
+
 
 class Student(TenantAwareModel):
     GENDER_CHOICES = [
@@ -15,20 +17,9 @@ class Student(TenantAwareModel):
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     enrollment_date = models.DateField()
-    
-    # We will link to Grade and to Classroom/Stream for FLMZ structure.
-    # Keep the existing current_class (Grade) for backward compatibility,
-    # and add explicit classroom and stream foreign keys which are used
-    # by attendance/reporting features.
-    current_class = models.ForeignKey(
-        'academics.Grade',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='students'
-    )
 
-    # Specific classroom instance (e.g., 'Grade 1 - A')
+    # Per spec: each student is enrolled in exactly one class (Classroom = Stream + metadata).
+    # classroom implies stream and grade — do not store stream/grade separately.
     classroom = models.ForeignKey(
         'academics.Classroom',
         on_delete=models.SET_NULL,
@@ -37,20 +28,33 @@ class Student(TenantAwareModel):
         related_name='students'
     )
 
-    # Stream (optional subdivision within a grade/class)
-    stream = models.ForeignKey(
-        'academics.Stream',
+    # The academic year of current enrollment
+    academic_year = models.ForeignKey(
+        'academics.AcademicYear',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='students_stream'
+        related_name='enrolled_students'
     )
-    
+
     is_active = models.BooleanField(default=True)
 
     class Meta:
         unique_together = ('school', 'admission_number')
         ordering = ['last_name', 'first_name']
+
+    def clean(self):
+        if self.classroom_id and self.school_id and self.classroom.school_id != self.school_id:
+            raise ValidationError("Classroom must belong to the same school as the student.")
+
+    @property
+    def current_stream(self):
+        return self.classroom.stream if self.classroom_id else None
+
+    @property
+    def current_grade(self):
+        stream = self.current_stream
+        return stream.grade if stream else None
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.admission_number})"

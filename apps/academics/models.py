@@ -1,30 +1,32 @@
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from apps.core.models import TenantAwareModel
 import uuid
 
+
 class AcademicYear(models.Model):
-    # Not strictly TenantAwareModel if shared? 
-    # PRD says "AcademicYear model". Usually shared across system or per school?
-    # PRD Phase 3: "AcademicYear model... is_current flag".
-    # If different schools have different calendars, it should be TenantAware.
-    # Design doc says "academic_years table" has NO school_id. It seems shared.
-    # However, Phase 3 text says: "Grade model (tenant-scoped)".
-    # Let's check Design Doc again for AcademicYear.
-    # SQL: CREATE TABLE academic_years (id UUID PRIMARY KEY, ...). No school_id.
-    # So it is global.
-    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=50)  # e.g., '2024-2025'
     start_date = models.DateField()
     end_date = models.DateField()
     is_current = models.BooleanField(default=False)
-    
+
+    def clean(self):
+        if self.start_date and self.end_date and self.start_date >= self.end_date:
+            raise ValidationError("start_date must be before end_date.")
+        if self.is_current:
+            qs = AcademicYear.objects.filter(is_current=True)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                raise ValidationError("Only one AcademicYear can be current at a time.")
+
     def __str__(self):
         return self.name
 
+
 class Term(models.Model):
-    # Design doc: No school_id. Global.
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name='terms')
     name = models.CharField(max_length=50)  # e.g., 'Term 1'
@@ -32,13 +34,23 @@ class Term(models.Model):
     end_date = models.DateField()
     is_current = models.BooleanField(default=False)
 
+    def clean(self):
+        if self.start_date and self.end_date and self.start_date >= self.end_date:
+            raise ValidationError("start_date must be before end_date.")
+        if self.is_current and self.academic_year_id:
+            qs = Term.objects.filter(academic_year_id=self.academic_year_id, is_current=True)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                raise ValidationError("Only one Term per AcademicYear can be current at a time.")
+
     def __str__(self):
         return f"{self.name} ({self.academic_year})"
 
+
 class Grade(TenantAwareModel):
-    # Tenant scoped
     name = models.CharField(max_length=50)  # e.g., 'Grade 7'
-    level = models.IntegerField() # e.g., 7 for sorting
+    level = models.IntegerField()  # e.g., 7 for sorting
 
     class Meta:
         unique_together = ('school', 'name')
@@ -46,6 +58,7 @@ class Grade(TenantAwareModel):
 
     def __str__(self):
         return self.name
+
 
 class Stream(TenantAwareModel):
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='streams')
@@ -55,8 +68,13 @@ class Stream(TenantAwareModel):
         unique_together = ('grade', 'name')
         ordering = ['name']
 
+    def clean(self):
+        if self.grade_id and self.school_id and self.grade.school_id != self.school_id:
+            raise ValidationError("Stream's school must match its grade's school.")
+
     def __str__(self):
         return f"{self.grade.name} - {self.name}"
+
 
 class Subject(TenantAwareModel):
     name = models.CharField(max_length=100)
@@ -70,6 +88,7 @@ class Subject(TenantAwareModel):
     def __str__(self):
         return self.name
 
+
 class TeacherAssignment(TenantAwareModel):
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='assignments')
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE)
@@ -81,23 +100,38 @@ class TeacherAssignment(TenantAwareModel):
     class Meta:
         unique_together = ('teacher', 'grade', 'stream', 'subject', 'academic_year')
 
+    def clean(self):
+        school_id = self.school_id
+        if self.grade_id and self.grade.school_id != school_id:
+            raise ValidationError("Grade must belong to the same school as this assignment.")
+        if self.stream_id and self.stream.school_id != school_id:
+            raise ValidationError("Stream must belong to the same school as this assignment.")
+        if self.subject_id and self.subject.school_id != school_id:
+            raise ValidationError("Subject must belong to the same school as this assignment.")
+        if self.stream_id and self.grade_id and self.stream.grade_id != self.grade_id:
+            raise ValidationError("Stream must belong to the specified grade.")
+
     def __str__(self):
         return f"{self.teacher} - {self.subject} ({self.grade})"
 
 
 class Classroom(TenantAwareModel):
-    """Represents a class/stream instance under a Grade for a specific school.
-    Example: Grade 1 -> '1-A', '1-B'
+    """Links a Stream to an optional class teacher and capacity.
+
+    Replaces the previous (grade, name) design — Stream is the canonical
+    academic sub-division; Classroom adds organizational metadata on top.
     """
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='classrooms')
-    name = models.CharField(max_length=50)  # e.g., '1-A' or 'Form 1A'
+    stream = models.OneToOneField(Stream, on_delete=models.CASCADE, related_name='classroom')
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
                                 null=True, blank=True, related_name='classrooms')
     capacity = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
-        unique_together = ('grade', 'name')
-        ordering = ['name']
+        ordering = ['stream__name']
+
+    def clean(self):
+        if self.stream_id and self.school_id and self.stream.school_id != self.school_id:
+            raise ValidationError("Classroom's school must match its stream's school.")
 
     def __str__(self):
-        return f"{self.grade.name} - {self.name}"
+        return str(self.stream)
