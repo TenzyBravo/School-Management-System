@@ -1,7 +1,23 @@
 import { getAccess, getRefresh, setAccess, clearTokens } from './auth'
 
-// API base URL - hardcoded for now since env var isn't working
-const API_BASE_URL = 'https://school-management-api-tkhv.onrender.com'
+// API base URL - prefer an explicit env var (VITE_API_BASE_URL). During local
+// development if the frontend is served from localhost we default to the local
+// Django dev server at http://localhost:8000 so requests hit your local API.
+const DEFAULT_REMOTE = 'https://school-management-api-tkhv.onrender.com'
+// `import.meta.env` typing may not be present in this environment, so access
+// defensively. Vite exposes VITE_API_BASE_URL when configured.
+let apiBase = DEFAULT_REMOTE
+try {
+  // @ts-ignore
+  const envUrl = import.meta?.env?.VITE_API_BASE_URL
+  if (envUrl) apiBase = envUrl
+} catch (e) {
+  // ignore - fallback to defaults below
+}
+if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+  apiBase = 'http://localhost:8000'
+}
+const API_BASE_URL = apiBase
 
 let refreshPromise: Promise<boolean> | null = null
 let refreshTimeout: number | null = null
