@@ -117,6 +117,7 @@ export default function StudentsManager() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [showBulkUpload, setShowBulkUpload] = useState(false)
+  const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
@@ -284,7 +285,7 @@ export default function StudentsManager() {
           </h3>
           <p style={{ fontSize: '14px', color: '#6B7280', margin: '2px 0 0' }}>Manage student enrolment</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <button
             onClick={() => setShowBulkUpload(true)}
             style={{ background: '#059669', color: 'white', border: 'none', padding: '10px 18px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}
@@ -296,6 +297,31 @@ export default function StudentsManager() {
             style={{ background: '#4F46E5', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}
           >
             + Add Student
+          </button>
+          <button
+            onClick={async () => {
+              const ids = Object.keys(selected).filter(k => selected[k])
+              if (ids.length === 0) return alert('No students selected for deletion.')
+              if (!confirm(`Delete ${ids.length} selected student(s)? This is irreversible.`)) return
+              try {
+                for (const id of ids) {
+                  const res = await apiFetch(`/api/v1/students/${id}/`, { method: 'DELETE' })
+                  if (!res.ok) {
+                    const text = await res.text()
+                    throw new Error(text || `Failed to delete ${id}`)
+                  }
+                }
+                // Refresh list
+                setSelected({})
+                await loadStudents()
+                alert('Selected students deleted.')
+              } catch (err: any) {
+                alert('Error deleting students: ' + (err.message || err))
+              }
+            }}
+            style={{ background: '#DC2626', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}
+          >
+            Delete Selected
           </button>
         </div>
       </div>
@@ -442,7 +468,13 @@ export default function StudentsManager() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={th}>Child ID</th>
+                  <th style={th}><input type="checkbox" onChange={e => {
+                    const checked = e.target.checked
+                    const newSel: Record<string, boolean> = {}
+                    filtered.forEach(s => { newSel[s.id] = checked })
+                    setSelected(newSel)
+                  }} checked={filtered.length > 0 && filtered.every(s => selected[s.id])} /></th>
+                  <th style={th}>Child ID</th>
                 <th style={th}>Name</th>
                 <th style={th}>Gender</th>
                 <th style={th}>Date of Birth</th>
@@ -454,6 +486,9 @@ export default function StudentsManager() {
             <tbody>
               {filtered.map(student => (
                 <tr key={student.id} style={{ opacity: student.is_active ? 1 : 0.5 }}>
+                  <td style={{ ...td, width: '38px', textAlign: 'center' }}>
+                    <input type="checkbox" checked={!!selected[student.id]} onChange={e => setSelected(prev => ({ ...prev, [student.id]: e.target.checked }))} />
+                  </td>
                   <td style={{ ...td, color: '#6B7280', fontFamily: 'monospace', fontSize: '13px' }}>{student.child_id}</td>
                   <td style={{ ...td, fontWeight: '500' }}>{student.first_name} {student.last_name}</td>
                   <td style={td}>{student.gender === 'M' ? 'Male' : student.gender === 'F' ? 'Female' : '—'}</td>
